@@ -149,8 +149,8 @@
     # We pre-register amongst the local RODC especially for DNS
     - name: Local RODC DHCP+DNS pre-registration
       win_shell: |
-        $password = "{{ p }}" | ConvertTo-SecureString -AsPlainText -Force
-        $credential = New-Object System.Management.Automation.PSCredential ('{{ u }}', $password)
+        $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
         $subnet = "{{ subnet }}.0" # Removed quotes around 'subnet'
         $name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
         $ipaddress = "{{ free_ip.stdout | trim }}"
