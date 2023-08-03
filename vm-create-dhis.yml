@@ -1,0 +1,279 @@
+- name: Deploy VM on Hyper-V
+  hosts: "{{ target_hyperviseur }}"
+  gather_facts: no
+
+  vars:
+    code_projet: "{{ lookup('env', 'code_projet') }}"
+    type_machine: "DHIS"
+    environnement: "{{ lookup('env', 'environnement') }}"
+    target_hyperviseur: "{{ lookup('env', 'code_projet') }}PHYP001P"
+    target_RODC: "{{ lookup('env', 'code_projet') }}VRODC001P"
+
+    default_generation: 2
+    cpu: 4
+    memory: 4096MB
+      
+    network:
+      subnet: "{{ lookup('env', 'subnet') }}"
+      ip_start: 150
+      ip_end: 159
+      subnet_mask: '255.255.255.0'
+      gateway: "{{ lookup('env', 'subnet') }}.1"
+      dns:
+        - "{{ lookup('env', 'subnet') }}.1"
+        - '8.8.8.8'
+
+    network_switch: 'SW-1G'
+    src_iso: 'C:\Fiwi_IT_TEST\Iso\FINAL.iso'
+
+    vhdx_suffixes:
+      - name: 'VAR'
+        size: '20GB'
+      - name: 'VARLOG'
+        size: '10GB'
+      - name: 'HOME'
+        size: '10GB'
+      - name: 'DHIS2'
+        size: '10GB'
+      - name: 'BCKP'
+        size: '10GB'
+    vms:
+      - name: "{{ env }}"
+
+  tasks:
+    - name: Determine next available VM number
+      win_shell: |
+        $code_projet = "{{ code_projet }}"
+        $type_machine = "{{ type_machine }}"
+        $environnement = "{{ environnement }}"
+
+        $regex = "^${code_projet}V${type_machine}(\d+)$environnement$"
+        $vm_names = Get-VM | Select-Object -ExpandProperty Name
+        $vm_numbers = $vm_names | ForEach-Object { if ($_ -match $regex) { [int]$matches[1] } } | Sort-Object
+        $next_vm_number = 1
+        foreach ($number in $vm_numbers) {
+          if ($number -gt $next_vm_number) { break }
+          $next_vm_number += 1
+        }
+        $next_vm_number.ToString("D3")        
+      register: next_vm_number
+
+    - name: Determine VM name
+      set_fact:
+        numero_machine: "{{ next_vm_number.stdout | trim }}"
+
+    - name: Determine VHD naming and location
+      set_fact:
+        dest_vhd: 'C:\ClusterStorage\Volume1\Hyper-V\DHIS\{{ code_projet }}V{{ type_machine }}{{ numero_machine }}-{{ environnement }}.vhdx'
+        vms:
+          - name: "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+
+    - name: VM Creation
+      win_shell: |
+        $vm_name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+        $vm = Get-VM -Name $vm_name
+        if ($null -eq $vm) {
+          $vm = New-VM -Name $vm_name -Generation {{ default_generation }} -MemoryStartupBytes {{ memory }} -SwitchName {{ network_switch }}
+          Set-VMProcessor -VM $vm -Count {{ cpu }}
+          Start-VM -Name $vm_name # Start the VM
+          # Optionally, you may wish to add a delay here to give the VM time to start up
+          Start-Sleep -Seconds 10
+          Stop-VM -TurnOff -Name $vm_name
+        }                
+        $vm.NetworkAdapters[0].MacAddress
+      register: mac_address
+
+    - name: Determine first available IP
+      win_shell: |
+        $ipStart = {{ network.ip_start }}
+        $ipEnd = {{ network.ip_end }}
+        $subnet = "{{ network.subnet }}"
+        for ($i=$ipStart; $i -le $ipEnd; $i++) {
+            $ip = $subnet + "." + $i
+            if (!(Test-Connection -ComputerName $ip -Count 1 -Quiet)) {
+                return $ip
+            }
+        }
+        throw "No free IP address found in the specified range."
+      register: free_ip
+
+    - name: Local RODC DHCP (+DNS) pre-registration
+      win_shell: |
+        $password = 'Vg43bX87?uiCK1IhUL!' | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('a-ydumas', $password)
+        $subnet = "{{ lookup('env', 'subnet') }}.0"
+        $name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}.ocg.msf.org"
+        $ipaddress_raw = "{{ free_ip.stdout }}"
+        $ipaddress = $ipaddress_raw.Trim()
+        $clientid_raw = "{{ mac_address.stdout }}"
+        $clientid = $clientid_raw.Trim()
+
+        $scriptBlock = {
+          param($subnet, $name, $ipaddress, $clientid)
+          Add-DhcpServerv4Reservation -ScopeID $subnet -Name $name -IPAddress $ipaddress -ClientId $clientid
+        }
+
+        Invoke-Command -ComputerName {{ target_RODC }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $name, $ipaddress, $clientid
+
+    - name: Attach ISO to VM
+      win_shell: |
+        $vm_name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+        $vm = Get-VM -Name $vm_name
+        $dvdDrive = Get-VMDvdDrive -VM $vm | Where-Object { $_.ControllerLocation -eq "0" }
+        if ($dvdDrive -ne $null)
+        {
+            Set-VMDvdDrive -VM $vm -ControllerNumber $dvdDrive.ControllerNumber -ControllerLocation $dvdDrive.ControllerLocation -Path "{{ src_iso }}"
+        }
+        else
+        {
+            try {
+                Add-VMDvdDrive -VM $vm -ControllerNumber 0 -ControllerLocation 1 -Path "{{ src_iso }}"
+            } catch {
+                Write-Error "Failed to add DVD Drive: $_"
+            }
+        }                
+
+    - name: Create and attach OS VHDX
+      win_shell: |
+        $vm_name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+        $path = "C:\\ClusterStorage\\Volume1\\Hyper-V\\DHIS\\${vm_name}-OS.vhdx"
+        if (-not (Test-Path $path)) {
+          New-VHD -Path $path -Dynamic -SizeBytes 15GB
+        }
+        $vm = Get-VM -Name $vm_name
+        if ($null -ne $vm) {
+          $existingVhd = Get-VMHardDiskDrive -VMName $vm.Name | Where-Object { $_.Path -eq $path }
+          if ($existingVhd -eq $null) {
+            Add-VMHardDiskDrive -VM $vm -Path $path
+          }
+        }          
+      register: vhdx_exists 
+          
+    - name: Disable secure boot pre-install
+      win_shell: Set-VMFirmware -EnableSecureBoot Off -VMName "{{ item.name }}"
+      with_items: "{{ vms }}"
+
+    - name: Set VM to boot from DVD Drive
+      win_shell: |
+        $vm_name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+        $vm = Get-VM -Name $vm_name
+        $dvdDrive = Get-VMDvdDrive -VM $vm
+        Set-VMFirmware -VM $vm -FirstBootDevice $dvdDrive                
+
+    - name: Enable Linux Integration Services
+      win_shell: Enable-VMIntegrationService -VMName "{{ item.name }}" -Name 'Guest Service Interface'
+      with_items: "{{ vms }}"
+
+    - name: Power on VM
+      win_shell: |
+         $vm_name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+         $vm = Get-VM -Name $vm_name
+         if ($vm.State -eq 'Off') {
+           Start-VM -VM $vm
+         }                  
+
+    - name: Wait VM autoinstall (-> ip in Hyper-V)
+      win_shell: |
+        $vm_name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+        $vm = Get-VM -Name $vm_name
+        do {
+          Start-Sleep -Seconds 10
+          $vm = Get-VM -Name $vm_name
+          $ip = ($vm.NetworkAdapters.IPAddresses | Where-Object { $_ -like "*.*.*.*" })[0]
+        } while ($ip -eq $null)
+        Write-Output $ip                        
+      register: vm_ip
+
+    - name: Power off VM
+      win_shell: |
+        $vm_name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+        $vm = Get-VM -Name $vm_name
+        if ($vm.State -ne 'Off') {
+          Stop-VM -VM $vm -Force
+        }         
+
+    - name: Enable Secure Boot with Microsoft UEFI Certificate Authority
+      win_shell: Set-VMFirmware -VMName "{{ item.name }}" -EnableSecureBoot On -SecureBootTemplate 'MicrosoftUEFICertificateAuthority'
+      with_items: "{{ vms }}"
+
+    - name: Enable TPM
+      win_shell: |
+        Import-Module Hyper-V
+        $vm = Get-VM -Name "{{ item.name }}"
+        $vm | Set-VMKeyProtector -NewLocalKeyProtector
+        $vm | Enable-VMEncryption
+        Enable-VMTPM -VMName "{{ item.name }}"
+      with_items: "{{ vms }}"
+      args:
+        executable: powershell
+
+    - name: Power on VM
+      win_shell: |
+        $vm_name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+        $vm = Get-VM -Name $vm_name
+        if ($vm.State -eq 'Off') {
+          Start-VM -VM $vm
+        }
+
+    - name: Wait for VM to fully boot
+      pause:
+        minutes: 1
+
+    - name: Configure network
+      win_shell: |
+        Get-VMNetworkAdapter -VMName {{ vms[0].name }} | Set-VMNetworkConfiguration -IPAddress {{ free_ip.stdout | trim }} -Subnet {{ network.subnet_mask }} -DNSServer {{ network.dns|join(",") }} -DefaultGateway {{ network.gateway }}
+
+    - name: Create and attach additional VHDX
+      win_shell: |
+        $vm_name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+        $vm = Get-VM -Name $vm_name
+        $suffix = "{{ item.name }}"
+        $path = "C:\\ClusterStorage\\Volume1\\Hyper-V\\DHIS\\${vm_name}-${suffix}.vhdx"
+        $sizeGB = "{{ item.size[:-2] }}"
+        $size = [int64]$sizeGB * 1GB
+        if (-not (Test-Path $path)) {
+          New-VHD -Path $path -Dynamic -SizeBytes $size
+        }
+        $existingVhd = Get-VMHardDiskDrive -VMName $vm.Name | Where-Object { $_.Path -eq $path }
+        if ($existingVhd -eq $null) {
+          Add-VMHardDiskDrive -VM $vm -Path $path
+        }                
+      loop: "{{ vhdx_suffixes }}"
+
+    - name: Remove DVD drive from VM
+      win_shell: |
+        $vm_name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}"
+        $vm = Get-VM -Name $vm_name
+        $dvdDrive = Get-VMDvdDrive -VM $vm
+        if ($dvdDrive -ne $null)
+        {
+            $dvdDrive | Remove-VMDvdDrive -Confirm:$false
+            Write-Output "DVD drive removed from the VM."
+        }
+        
+    - name: Update RODC DHCP entry name
+      win_shell: |
+        $password = 'Vg43bX87?uiCK1IhUL!' | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('a-ydumas', $password)
+        $subnet = "{{ lookup('env', 'subnet') }}.0"
+        $name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}.ocg.msf.org"
+        $ipaddress_raw = "{{ free_ip.stdout }}"
+        $ipaddress = $ipaddress_raw.Trim()
+        $clientid_raw = "{{ mac_address.stdout }}"
+        $clientid = $clientid_raw.Trim()
+
+        $scriptBlock = {
+          param($subnet, $ip_address, $new_name)
+          $reservation = Get-DhcpServerv4Reservation -ScopeID $subnet | Where-Object { $_.IPAddress -eq $ip_address }
+          if ($reservation -ne $null) {
+            Set-DhcpServerv4Reservation -ScopeID $subnet -ClientId $reservation.ClientId -Name {{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}
+          } else {
+            Write-Host "No reservation found for $ip_address."
+          }
+        }
+
+        Invoke-Command -ComputerName {{ target_RODC }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $name, $ipaddress, $clientid
+        
+    - name: Deployment done
+      debug:
+        msg: "DHIS deployment done. Machine name is {{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }} and IP address is {{ free_ip.stdout | trim }}"

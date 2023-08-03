@@ -1,0 +1,135 @@
+- name: Configure LIME VM
+  hosts: all
+  become: true
+  gather_facts: False
+  vars:
+    public_keys_file: /SSH_Keys/ssh_lime
+
+#    users:
+#      - name: adrian
+#        ssh_key: /SSH_Keys/Adrian.pub
+#      - name: arnau
+#        ssh_key: /SSH_Keys/Arnau.pub
+#      - name: hawizi
+#        ssh_key: /SSH_Keys/Hawizi.pub
+#      - name: nazar
+#        ssh_key: /SSH_Keys/Nazar.pub
+#      - name: nicolas
+#        ssh_key: /SSH_Keys/Nicolas.pub
+#      - name: yann
+#        ssh_key: /SSH_Keys/Yann.pub
+        
+    devices:
+      - { device: '/dev/sdb', mount: '/var/lib/docker', temp_mount: '/mnt/docker' }
+      - { device: '/dev/sdc', mount: '/var/lib/docker/volumes', temp_mount: '/mnt/volumes' }
+      - { device: '/dev/sdd', mount: '/var/log', temp_mount: '/mnt/log' }
+      - { device: '/dev/sde', mount: '/home/lime', temp_mount: '/mnt/lime' }
+      - { device: '/dev/sdf', mount: '/home/backup', temp_mount: '/mnt/backup' }
+        
+  tasks:
+    - name: Create /var/lib/docker folder
+      become: true
+      file:
+        path: /var/lib/docker
+        state: directory
+        mode: "0755"
+  
+    - name: Create /var/lib/docker/volumes folder
+      become: true
+      file:
+        path: /var/lib/docker/volumes
+        state: directory
+        mode: "0755"
+  
+    - name: Set hostname to match inventory hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+        
+    - name: Create lime user
+      user:
+        name: lime
+        home: /home/lime
+        shell: /bin/false
+        create_home: yes
+
+    - name: Create backup user
+      user:
+        name: backup
+        home: /home/backup
+        shell: /bin/false
+        create_home: yes
+ 
+    - name: Install necessary packages
+      apt:
+        name: ['mysql-server', 'python3', 'python3-pip', 'openssl']
+        state: present
+        update_cache: yes  
+ 
+    - name: Create ext4 filesystem on devices
+      command: mkfs.ext4 {{ item.device }}
+      loop: "{{ devices }}"
+      loop_control:
+        label: "{{ item.device }}"
+
+    - name: Create temporary mount points
+      file:
+        path: "{{ item.temp_mount }}"
+        state: directory
+      loop: "{{ devices }}"
+
+    - name: Mount devices to temporary mount points
+      mount:
+        path: "{{ item.temp_mount }}"
+        src: "{{ item.device }}"
+        fstype: ext4
+        state: mounted
+      loop: "{{ devices }}"
+
+    - name: Synchronize directories
+      command: rsync -a "{{ item.mount }}/." "{{ item.temp_mount }}"
+      loop: "{{ devices }}"
+
+    - name: Unmount temporary mount points
+      mount:
+        path: "{{ item.temp_mount }}"
+        state: absent
+      loop: "{{ devices }}"
+
+    - name: Mount devices to final mount points
+      mount:
+        path: "{{ item.mount }}"
+        src: "{{ item.device }}"
+        fstype: ext4
+        state: mounted
+      loop: "{{ devices }}"
+      
+    - name: Update /etc/fstab
+      shell: echo "UUID=$(blkid -s UUID -o value {{ item.device }}) {{ item.mount }} ext4 defaults 0 0" >> /etc/fstab
+      loop: "{{ devices }}"
+        
+    - name: Set root authorized_keys
+      copy:
+        src: "{{ public_keys_file }}"
+        dest: "/root/.ssh/authorized_keys"
+        owner: "root"
+        group: "root"
+        mode: '0600'
+
+    - name: Disable password authentication
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+      notify: Restart ssh
+
+    - name: Wipe known hosts
+      file:
+        path: /root/.ssh/known_hosts
+        state: absent
+
+  handlers:
+    - name: Restart ssh
+      service:
+        name: ssh
+        state: restarted

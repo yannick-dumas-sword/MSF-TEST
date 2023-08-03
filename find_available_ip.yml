@@ -1,0 +1,52 @@
+---
+- name: Find the lowest available IP and assign it
+  hosts: all
+  gather_facts: no
+  # vars:
+  #   start_ip: "192.168.1.180"
+  #   end_ip: "192.168.1.189"
+  #   subnet: "255.255.255.0"
+  #   gateway: "192.168.1.1"
+  #   dns: ["192.168.1.1", "1.1.1.1"]
+  tasks:
+    - name: Ping the IP range and get the lowest available IP
+      win_shell: |
+        # Define IP range
+        $startIP = [System.Net.IPAddress]::Parse("{{ start_ip }}")
+        $endIP = [System.Net.IPAddress]::Parse("{{ end_ip }}")
+
+        # Initialize current IP to start IP
+        $currentIP = $startIP
+
+        do {
+          # Ping the current IP
+          $ping = Test-Connection -ComputerName $currentIP.IPAddressToString -Count 1 -Quiet -ErrorAction SilentlyContinue
+
+          # If ping is not successful, break the loop as we've found our IP
+          if (-not $ping) {
+            break
+          }
+
+          # Calculate next IP
+          $ipBytes = $currentIP.GetAddressBytes()
+          [Array]::Reverse($ipBytes)
+          $ipInt = [System.BitConverter]::ToUInt32($ipBytes, 0)
+          $nextIPInt = $ipInt + 1
+          $nextIPBytes = [System.BitConverter]::GetBytes($nextIPInt)
+          [Array]::Reverse($nextIPBytes)
+          $currentIP = [System.Net.IPAddress]::Parse(([System.Net.IPAddress]($nextIPBytes)).IPAddressToString)
+
+        } while ($currentIP.Address -le $endIP.Address)
+
+        # Output the selected IP
+        Write-Output $currentIP.IPAddressToString
+      register: network_ip
+      changed_when: network_ip.stdout != network.ip
+
+    - set_fact:
+        network:
+          ip: "{{ network_ip.stdout }}"
+          subnet: "{{ subnet }}"
+          gateway: "{{ gateway }}"
+          dns: "{{ dns }}"
+      when: network_ip.stdout != network.ip

@@ -1,0 +1,13 @@
+- hosts: GCH555PHYP001P
+  tasks:
+    - name: Retrieve the IP address using DNS
+      set_fact:
+        ip_address: "{{ lookup('dig', inventory_hostname) }}"
+
+    - name: Extract the first three octets
+      set_fact:
+        subnet: "{{ ip_address.split('.')[0] + '.' + ip_address.split('.')[1] + '.' + ip_address.split('.')[2] }}"
+
+    - name: Print the result
+      debug:
+        msg: "The subnet is {{ subnet }}"

@@ -1,0 +1,70 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Add nginx repository
+      shell: echo "deb [signed-by=/usr/share/keyrings/nginx.gpg] https://nginx.org/packages/ubuntu/ jammy nginx" | sudo tee /etc/apt/sources.list.d/nginx.list
+
+    - name: Import Nginx signing key
+      apt_key:
+        keyserver: keyserver.ubuntu.com
+        id: ABF5BD827BD9BF62
+
+    - name: Update apt cache
+      apt: 
+        update_cache: yes  
+
+    - name: Reconfigure tzdata 
+      shell: sudo timedatectl set-timezone Europe/Zurich
+
+    - name: Install locales package
+      become: true
+      apt:
+        name: locales
+        state: present
+
+    # - name: Generate en_US.UTF-8 locale
+    #   locale_gen:
+    #     name: en_US.UTF-8
+    #     state: present
+
+    - name: Download PostgreSQL apt key to temporary location
+      get_url:
+        url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        dest: /tmp/ACCC4CF8.asc
+
+    - name: Add apt key from downloaded file
+      apt_key:
+        file: /tmp/ACCC4CF8.asc
+        state: present
+
+    - name: Create sources list file
+      copy:
+        content: "deb [signed-by=/usr/share/keyrings/pgdp.gpg] http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+        dest: /etc/apt/sources.list.d/pgdg.list
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Install PostgreSQL
+      apt:
+        name: postgresql
+        state: present
+
+    - name: Enable and start Nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Enable and start PostgreSQL
+      systemd:
+        name: postgresql
+        state: started
+        enabled: yes

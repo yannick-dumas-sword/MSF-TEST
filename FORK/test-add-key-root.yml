@@ -1,0 +1,15 @@
+- name: Deploy keys
+  hosts: all
+  become: true
+  gather_facts: False
+  vars:
+    public_keys_file: /SSH_Keys/ssh_dhis
+        
+  tasks:
+    - name: Copier les clés publiques dans authorized_keys
+      copy:
+        src: "{{ public_keys_file }}"
+        dest: "/root/.ssh/authorized_keys"
+        owner: "root"
+        group: "root"
+        mode: '0600'

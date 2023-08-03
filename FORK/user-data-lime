@@ -1,0 +1,73 @@
+#cloud-config
+autoinstall:
+  packages:
+  - dialog
+  - linux-image-virtual
+  - linux-tools-virtual
+  - linux-cloud-tools-virtual
+  - ifupdown
+  apt:
+    disable_components: []
+    geoip: true
+    preserve_sources_list: false
+    primary:
+    - arches:
+      - amd64
+      - i386
+      uri: http://archive.ubuntu.com/ubuntu
+    - arches:
+      - default
+      uri: http://ports.ubuntu.com/ubuntu-ports
+  disk_layout:
+    - id: disk0
+      type: gpt
+      name: ''
+      wipe: superblock-recursive
+      preserve: false
+      grub_device: false
+      table_type: null
+      partitions:
+        - id: partition1
+          size: 2GB
+          type: linux-swap
+        - id: partition2
+          size: 0
+          type: ext4
+  storage:
+    layout:
+      name: disk0
+  drivers:
+    install: false
+  identity:
+    hostname: lime
+    password: "$6$8oJea7WMslrHdGVU$mgzFnM7gddzg0lNK4n9pHdDEAwWIfrL0Xi/KjCrsTOn.IkXbfK4h.3vz8x.4CCuBmRgQwFd39uRZ0fc.JLb2P/"
+    realname: admin sword
+    username: adm-sword
+  kernel:
+    package: linux-generic
+  keyboard:
+    layout: ch
+    toggle: null
+    variant: fr
+  locale: en_US.UTF-8
+  # network:
+  #   ethernets:
+  #     eth0:
+  #       critical: true
+  #       dhcp-identifier: mac
+  #       dhcp4: true
+  #   version: 2
+  ssh:
+    allow-pw: true
+    authorized-keys: []
+    install-server: true
+  #test time opti
+  #updates: security
+  version: 1
+  late-commands:
+    - 'echo "auto eth0\niface eth0 inet static\naddress 192.168.0.10\nnetmask 255.255.255.0\ngateway 192.168.0.1\nbroadcast 192.168.0.255\ndns-nameservers 192.168.0.2 192.168.0.3\ndns-search lan" >> /target/etc/network/interfaces'
+    - 'echo -e "[Resolve]\nDNS=8.8.8.8 8.8.4.4 2001:4860:4860::8888 2001:4860:4860::8844" >> /target/etc/systemd/resolved.conf'
+    - 'mkdir -p /target/usr/libexec/hypervkvpd/'
+    - 'cp /target/usr/sbin/hv_* /target/usr/libexec/hypervkvpd'
+    - 'rm -rf /target/usr/share/netplan/*'
+    - 'rm -rf /target/etc/netplan/*'
