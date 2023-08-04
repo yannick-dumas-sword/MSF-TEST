@@ -314,7 +314,7 @@
         $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
         $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
         $subnet = "{{ subnet }}.0" # Removed quotes around 'subnet'
-        $name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
+        $vm_name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
         $ipaddress = "{{ free_ip.stdout | trim }}"
         $clientid = "{{ mac_address.stdout | trim }}" # Changed variable name
 
@@ -322,7 +322,7 @@
           param($subnet, $ip_address)
           $reservation = Get-DhcpServerv4Reservation -ScopeID $subnet | Where-Object { $_.IPAddress -eq $ip_address }
           if ($reservation -ne $null) {
-            Set-DhcpServerv4Reservation -ScopeID $subnet -ClientId $reservation.ClientId -Name {{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}
+            Set-DhcpServerv4Reservation -ScopeID $subnet -ClientId $reservation.ClientId -Name $vm_name
           } else {
             Write-Host "No reservation found for $ip_address."
           }
