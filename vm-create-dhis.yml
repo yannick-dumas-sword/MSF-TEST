@@ -253,8 +253,8 @@
         
     - name: Update RODC DHCP entry name
       win_shell: |
-        $password = 'Vg43bX87?uiCK1IhUL!' | ConvertTo-SecureString -AsPlainText -Force
-        $credential = New-Object System.Management.Automation.PSCredential ('a-ydumas', $password)
+        $password = '{{ lookup('env', 'p') }}' | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
         $subnet = "{{ lookup('env', 'subnet') }}.0"
         $name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}.ocg.msf.org"
         $ipaddress_raw = "{{ free_ip.stdout }}"
