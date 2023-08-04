@@ -232,7 +232,7 @@
     - name: Enable Secure Boot with Microsoft UEFI Certificate Authority
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
-        Set-VMFirmware -VMName "{{ item.name }}" -EnableSecureBoot On -SecureBootTemplate 'MicrosoftUEFICertificateAuthority'
+        Set-VMFirmware -VMName $vm_name -EnableSecureBoot On -SecureBootTemplate 'MicrosoftUEFICertificateAuthority'
 
     #TPM
     - name: Enable TPM
@@ -255,7 +255,7 @@
         }
 
     #Pause to make sure everyting's up
-    - name: Wait 1 minute for make sure VM fully booted up
+    - name: Wait 1 minute to make sure VM fully booted up
       pause:
         minutes: 1
 
