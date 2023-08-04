@@ -328,7 +328,7 @@
           }
         }
 
-        Invoke-Command -ComputerName {{ target_RODC }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $name, $ipaddress, $clientid
+        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $name, $ipaddress, $clientid
         
     #VM deployed
     - name: Deployment done
