@@ -233,7 +233,6 @@
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         Set-VMFirmware -VMName "{{ item.name }}" -EnableSecureBoot On -SecureBootTemplate 'MicrosoftUEFICertificateAuthority'
-      with_items: "{{ vms }}"
 
     #TPM
     - name: Enable TPM
@@ -243,7 +242,6 @@
         $vm | Set-VMKeyProtector -NewLocalKeyProtector
         $vm | Enable-VMEncryption
         Enable-VMTPM -VMName "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
-      with_items: "{{ vms }}"
       args:
         executable: powershell
 
