@@ -230,7 +230,9 @@
 
     #Secure boot
     - name: Enable Secure Boot with Microsoft UEFI Certificate Authority
-      win_shell: Set-VMFirmware -VMName "{{ item.name }}" -EnableSecureBoot On -SecureBootTemplate 'MicrosoftUEFICertificateAuthority'
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        Set-VMFirmware -VMName "{{ item.name }}" -EnableSecureBoot On -SecureBootTemplate 'MicrosoftUEFICertificateAuthority'
       with_items: "{{ vms }}"
 
     #TPM
