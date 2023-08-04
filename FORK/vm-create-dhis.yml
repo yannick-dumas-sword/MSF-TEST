@@ -263,7 +263,7 @@
     - name: Configure network
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
-        Get-VMNetworkAdapter -VMName $vmname | Set-VMNetworkConfiguration -IPAddress {{ free_ip.stdout | trim }} -Subnet {{ network.subnet_mask }} -DNSServer {{ network.dns|join(",") }} -DefaultGateway {{ network.gateway }}
+        Get-VMNetworkAdapter -VMName $vm_name | Set-VMNetworkConfiguration -IPAddress {{ free_ip.stdout | trim }} -Subnet {{ network.subnet_mask }} -DNSServer {{ network.dns|join(",") }} -DefaultGateway {{ network.gateway }}
 
     #Additional storage configuration
     
@@ -298,6 +298,15 @@
             $dvdDrive | Remove-VMDvdDrive -Confirm:$false
             Write-Output "DVD drive removed from the VM."
         }
+        
+    #Shutting down the VM to make some adjustments
+    - name: Shut down
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $vm = Get-VM -Name $vm_name
+        if ($vm.State -ne 'Off') {
+          Stop-VM -VM $vm -Force
+        }  
         
     #Final DHCP entry update
     - name: Update RODC DHCP entry name
