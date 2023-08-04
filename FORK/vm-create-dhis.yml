@@ -313,10 +313,10 @@
       win_shell: |
         $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
         $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
-        $subnet = "{{ lookup('env', 'subnet') }}.0"
-        $name = "{{ code_projet }}V{{ type_machine }}{{ numero_machine }}{{ environnement }}.ocg.msf.org"
+        $subnet = "{{ subnet }}.0" # Removed quotes around 'subnet'
+        $name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
         $ipaddress = "{{ free_ip.stdout | trim }}"
-        $clientid = "{{ mac_address.stdout | trim }}"
+        $clientid = "{{ mac_address.stdout | trim }}" # Changed variable name
 
         $scriptBlock = {
           param($subnet, $ip_address)
