@@ -97,7 +97,20 @@
         throw "No free IP address found in the specified range."
       register: free_ip
     
-    - name: Make sure .vhdx files don't exist already
+    - name: Make sure OS .vhdx don't exist already
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $suffix = "{{ item.name }}"
+        $path = "{{ vhdx_location }}${vm_name}-OS.vhdx"
+        if (Test-Path -Path $path) {
+          throw "File $path already exists."
+        }
+      register: vhdx_check_result
+      failed_when: vhdx_check_result.stderr != ""
+    
+    - name: Make sure there's no reservation or lease for {{ free_ip.stdout | trim }}
+
+    - name: Make sure additional .vhdx files don't exist already
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         $suffix = "{{ item.name }}"
