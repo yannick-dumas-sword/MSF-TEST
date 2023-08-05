@@ -5,7 +5,7 @@
   vars:
     public_keys_file: /SSH_Keys/ssh_dhis    
     
-  - tasks:
+  tasks:
     - name: Set root authorized_keys
       authorized_key:
         user: "root"
