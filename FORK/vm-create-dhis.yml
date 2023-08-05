@@ -91,6 +91,77 @@
       debug:
         msg: "Next VM name will be {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}" 
     
+    # We check for the next available IP based on playbook defined range ()
+    - name: Determine first available IP (based on host)
+      win_shell: |
+        $ipStart = {{ network.ip_start }}
+        $ipEnd = {{ network.ip_end }}
+        $subnet = "{{ subnet }}" # Using the previously set subnet variable
+        for ($i=$ipStart; $i -le $ipEnd; $i++) {
+            $ip = $subnet + "." + $i
+            if (!(Test-Connection -ComputerName $ip -Count 1 -Quiet)) {
+                return $ip
+            }
+        }
+        throw "No free IP address found in the specified range."
+      register: free_ip
+      
+    - name: INFO (Free IP)
+      debug:
+        msg: "IP will be {{ free_ip.stdout | trim }}" 
+        
+    
+    
+    
+    - name: Check if VHDX files already exist
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $suffix = "{{ item.name }}"
+        $path = "C:\\ClusterStorage\\Volume1\\Hyper-V\\DHIS\\${vm_name}-${suffix}.vhdx"
+
+        if (Test-Path -Path $path) {
+          throw "File $path already exists."
+        }
+      with_items: "{{ vhdx_suffixes }}"
+      register: vhdx_check_result
+      failed_when: vhdx_check_result.stderr != ""
+
+    
+- name: Check if the IP reservation or lease already exists
+  win_shell: |
+    $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
+    $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
+    $subnet = "{{ subnet }}.0"
+    $ipaddress = "{{ free_ip.stdout | trim }}"
+
+    $scriptBlock = {
+      param($subnet, $ipaddress)
+      
+      # Check for existing reservation
+      $reservation = Get-DhcpServerv4Reservation -ScopeId $subnet -IPAddress $ipaddress -ErrorAction SilentlyContinue
+      if ($reservation) {
+        throw "Reservation already exists for IP $ipaddress in subnet $subnet."
+      }
+
+      # Check for existing lease
+      $lease = Get-DhcpServerv4Lease -ScopeId $subnet -IPAddress $ipaddress -ErrorAction SilentlyContinue
+      if ($lease) {
+        throw "Lease already exists for IP $ipaddress in subnet $subnet."
+      }
+    }
+
+    Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
+  register: ip_check_result
+  failed_when: ip_check_result.stderr != ""
+
+
+    
+    
+    
+    
+    
+    
+    
     #We create the VM and power it for 10 seconds so the vnet card gets initialized and obtains a MAC address from host. We save the MAC address.
     - name: VM Creation ({{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }})
       win_shell: |
@@ -124,26 +195,7 @@
             Add-VMHardDiskDrive -VM $vm -Path $path
           }
         }          
-      register: vhdx_exists 
-
-    # We check for the next available IP based on playbook defined range ()
-    - name: Determine first available IP (based on host)
-      win_shell: |
-        $ipStart = {{ network.ip_start }}
-        $ipEnd = {{ network.ip_end }}
-        $subnet = "{{ subnet }}" # Using the previously set subnet variable
-        for ($i=$ipStart; $i -le $ipEnd; $i++) {
-            $ip = $subnet + "." + $i
-            if (!(Test-Connection -ComputerName $ip -Count 1 -Quiet)) {
-                return $ip
-            }
-        }
-        throw "No free IP address found in the specified range."
-      register: free_ip
-      
-    - name: INFO (Free IP)
-      debug:
-        msg: "IP will be {{ free_ip.stdout | trim }}" 
+      register: vhdx_exists
 
     # We pre-register amongst the local RODC especially for DNS
     - name: Local RODC DHCP+DNS pre-registration
@@ -228,7 +280,7 @@
         }         
 
     #Secure boot
-    - name: Enable Secure Boot with Microsoft UEFI Certificate Authority
+    - name: Enable Secure Boot
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         Set-VMFirmware -VMName $vm_name -EnableSecureBoot On -SecureBootTemplate 'MicrosoftUEFICertificateAuthority'
