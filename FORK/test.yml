@@ -1,5 +1,5 @@
 - name: Deploy DHIS VM on Hyper-V
-  hosts: all
+  hosts: localhost
   #Let's goooooooo
   tasks:
   
