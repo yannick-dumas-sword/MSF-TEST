@@ -365,7 +365,7 @@
           param($vm_name, $ipaddress)
           Set-DhcpServerv4Reservation -IPAddress $ipaddress -Name $vm_name
         }
-        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}{{ dhcp_suffix }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
+        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}{{ dhcp_suffix }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $vm_name, $ipaddress        
         
     #VM deployed
     - name: INFO | Deployment done
