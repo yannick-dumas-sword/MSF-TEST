@@ -327,15 +327,14 @@
         vm_name: "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
         ip_address: "{{ free_ip.stdout | trim }}"
       
-    - name: Creating Ansible host for the VM
+    - name: Creating dynamic Ansible host for the VM
       add_host:
         name: "{{ vm_name }}"
         groups: new_vm_host
-        ansible_user: adm-sword
-        ansible_password: Sword123
-
-        
-        
+        ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+        ansible_sudo_pass: "Sword123"
+      vars:
+        ansible_remote_tmp: /tmp/.ansible/tmp
         
         
         
