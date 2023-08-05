@@ -4,8 +4,6 @@
       debug: 
         msg: "Avant d'appeler un autre playbook"
 
-- import_playbook: test2.yml
-
 - hosts: localhost
   tasks:
     - name: 2
