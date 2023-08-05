@@ -20,6 +20,24 @@
         ansible_remote_tmp: /tmp/.ansible/tmp
 
         
+    - name: Create temporary file with hostname content
+      win_tempfile:
+        state: directory
+      register: temp_dir
+
+    - name: Add hostname to temporary file
+      win_copy:
+        dest: "{{ temp_dir.path }}\\hostname.txt"
+        content: "{{ vm_name }}"
+        
+    - name: Copy temporary file into Linux VM
+      win_shell: |
+        $vmName = "{{ vm_name }}"
+        $sourcePath = "{{ temp_dir.path }}\\hostname.txt"
+        $destinationPath = "/tmp/hostname"
+        Copy-VMFile -Name $vmName -SourcePath $sourcePath -DestinationPath $destinationPath -FileSource Host
+
+        
 ######################################################################
 #                                                                    #
 #                        VM Configuration                            #
