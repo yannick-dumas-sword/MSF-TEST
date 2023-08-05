@@ -21,7 +21,7 @@
         
     - name: test    
       debug:
-        msg: {{ lookup('env', 'vm_password') }} / {{ lookup('env', 'vm_username') }}
+        msg: "{{ lookup('env', 'vm_password') }} / {{ lookup('env', 'vm_username') }}"
         
         
         
