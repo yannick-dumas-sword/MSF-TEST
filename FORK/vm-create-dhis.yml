@@ -1,4 +1,4 @@
-- name: Deploy VM on Hyper-V
+- name: Deploy DHIS VM on Hyper-V
   hosts: "{{ lookup('env', 'code_projet') }}PHYP001P"
   gather_facts: no
 
@@ -318,6 +318,152 @@
         Invoke-Command -ComputerName GCH001VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $vm_name, $ipaddress
         
     #VM deployed
-    - name: Deployment done
+    - name: Deployment done, registering facts for VM configuration
       debug:
-        msg: "DHIS deployment done. Machine name is {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP address is {{ free_ip.stdout | trim }}"
+        msg: "Machine name is {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP address is {{ free_ip.stdout | trim }}"
+      set_fact:
+        vm_name: "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
+        ip_address: "{{ free_ip.stdout | trim }}"
+      
+    - name: Ajout de la VM aux hôtes dynamiques
+      add_host:
+        name: "{{ vm_name }}"
+        groups: new_vm_host
+
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+- name: Configure DHIS VM
+  hosts: new_vm_host
+  become: true
+  gather_facts: true
+  vars:
+    public_keys_file: /SSH_Keys/ssh_dhis
+    
+#    users:
+#      - name: adrian
+#        ssh_key: /SSH_Keys/Adrian.pub
+#      - name: arnau
+#        ssh_key: /SSH_Keys/Arnau.pub
+#      - name: hawizi
+#        ssh_key: /SSH_Keys/Hawizi.pub
+#      - name: nazar
+#        ssh_key: /SSH_Keys/Nazar.pub
+#      - name: nicolas
+#        ssh_key: /SSH_Keys/Nicolas.pub
+#      - name: yann
+#        ssh_key: /SSH_Keys/Yann.pub
+        
+    devices:
+      - { device: '/dev/sdb', mount: '/var', temp_mount: '/mnt/var' }
+      - { device: '/dev/sdc', mount: '/var/log', temp_mount: '/mnt/varlog' }
+      - { device: '/dev/sdd', mount: '/home', temp_mount: '/mnt/home' }
+      - { device: '/dev/sde', mount: '/home/dhis2', temp_mount: '/mnt/dhis2' }
+      - { device: '/dev/sdf', mount: '/home/backup', temp_mount: '/mnt/backup' }
+        
+  tasks:
+    - name: Set hostname to match inventory hostname
+      hostname:
+        name: "{{ vm_name }}"
+        
+    - name: Create dhis2 user
+      user:
+        name: dhis2
+        home: /home/dhis2
+        shell: /bin/false
+        create_home: yes
+
+    - name: Create backup user
+      user:
+        name: backup
+        home: /home/backup
+        shell: /bin/false
+        create_home: yes
+ 
+    - name: Create ext4 filesystem on devices
+      command: mkfs.ext4 {{ item.device }}
+      loop: "{{ devices }}"
+      loop_control:
+        label: "{{ item.device }}"
+
+    - name: Create temporary mount points
+      file:
+        path: "{{ item.temp_mount }}"
+        state: directory
+      loop: "{{ devices }}"
+
+    - name: Mount devices to temporary mount points
+      mount:
+        path: "{{ item.temp_mount }}"
+        src: "{{ item.device }}"
+        fstype: ext4
+        state: mounted
+      loop: "{{ devices }}"
+
+    - name: Synchronize directories
+      command: rsync -a "{{ item.mount }}/." "{{ item.temp_mount }}"
+      loop: "{{ devices }}"
+
+    - name: Unmount temporary mount points
+      mount:
+        path: "{{ item.temp_mount }}"
+        state: absent
+      loop: "{{ devices }}"
+
+    - name: Mount devices to final mount points
+      mount:
+        path: "{{ item.mount }}"
+        src: "{{ item.device }}"
+        fstype: ext4
+        state: mounted
+      loop: "{{ devices }}"
+      
+    - name: Update /etc/fstab
+      shell: echo "UUID=$(blkid -s UUID -o value {{ item.device }}) {{ item.mount }} ext4 defaults 0 0" >> /etc/fstab
+      loop: "{{ devices }}"
+
+#    - name: Install necessary packages
+#      apt:
+        #name: ['openjdk-11-jdk', 'postgresql', 'postgresql-contrib', 'postgis', 'tomcat9']
+#        name: ['openjdk-11-jdk']
+#        state: present
+#        update_cache: yes
+
+    - name: Set root authorized_keys
+      copy:
+        src: "{{ public_keys_file }}"
+        dest: "/root/.ssh/authorized_keys"
+        owner: "root"
+        group: "root"
+        mode: '0600'
+
+    - name: Disable password authentication
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+      notify: Restart ssh
+
+    - name: Wipe known hosts
+      file:
+        path: /root/.ssh/known_hosts
+        state: absent
+
+  handlers:
+    - name: Restart ssh
+      service:
+        name: ssh
+        state: restarted
