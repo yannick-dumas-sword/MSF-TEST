@@ -59,9 +59,19 @@
       - { device: '/dev/sdf', mount: '/home/backup', temp_mount: '/mnt/backup' }
         
   tasks:
-    - name: Set hostname to match inventory hostname
+  
+    - name: Read hostname from /tmp/hostname.txt
+      command: cat /tmp/hostname.txt
+      register: hostname_content
+
+    - name: Set hostname to match content of /tmp/hostname.txt
       hostname:
-        name: "{{ vm_name }}"
+        name: "{{ hostname_content.stdout }}"
+      
+    - name: Remove /tmp/hostname.txt
+      file:
+        path: /tmp/hostname.txt
+        state: absent
         
     - name: Create users
       user:
