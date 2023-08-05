@@ -493,6 +493,10 @@
         state: mounted
       loop: "{{ devices }}"
       
+    - name: Update /etc/fstab
+      shell: echo "UUID=$(blkid -s UUID -o value {{ item.device }}) {{ item.mount }} ext4 defaults 0 0" >> /etc/fstab
+      loop: "{{ devices }}"
+      
 #    - name: Install necessary packages
 #      apt:
         #name: ['openjdk-11-jdk', 'postgresql', 'postgresql-contrib', 'postgis', 'tomcat9']
