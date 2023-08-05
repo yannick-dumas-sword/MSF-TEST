@@ -13,6 +13,7 @@
         name: "{{ ip_address }}"
         groups: new_vm_host
         ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+        ansible_ssh_user: "{{ lookup('env', 'vm_username') }}"
         ansible_user: "{{ lookup('env', 'vm_username') }}"
         ansible_password: "{{ lookup('env', 'vm_password') }}"
         ansible_ssh_pass: "{{ lookup('env', 'vm_password') }}"
