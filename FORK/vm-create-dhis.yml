@@ -158,10 +158,7 @@
     
     
     
-    
-    
-    
-    
+        
 ######################################################################
 #                                                                    #
 #                       VM Deployment                                #
@@ -276,8 +273,8 @@
         Write-Output $ip                        
       register: vm_ip
 
-    #Shutting down the VM to make some adjustments
-    - name: OS deployed, shutting down to configure Hyper-V
+    #Shutting down the VM to configure bootloader security
+    - name: Shut VM down
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         $vm = Get-VM -Name $vm_name
@@ -388,7 +385,7 @@
       vars:
         ansible_remote_tmp: /tmp/.ansible/tmp
         
-    - name: Create temporary file for hostname content
+    - name: Create temporary file for hostname
       win_tempfile:
         state: directory
       register: temp_dir
@@ -398,12 +395,14 @@
         dest: "{{ temp_dir.path }}\\hostname.txt"
         content: "{{ vm_name }}"
         
-    - name: Copy temporary file into Linux VM
+    - name: Copy temporary file into VM
       win_shell: |
         $vmName = "{{ vm_name }}"
         $sourcePath = "{{ temp_dir.path }}\\hostname.txt"
         $destinationPath = "/tmp/"
         Copy-VMFile -Name $vmName -SourcePath $sourcePath -DestinationPath $destinationPath -FileSource Host
+        
+        
         
         
         
@@ -432,7 +431,6 @@
       - name: "dhis2"
       - name: "backup"
     
-        
   tasks:
     - name: Read hostname from /tmp/hostname.txt
       command: cat /tmp/hostname.txt
@@ -497,13 +495,14 @@
       shell: echo "UUID=$(blkid -s UUID -o value {{ item.device }}) {{ item.mount }} ext4 defaults 0 0" >> /etc/fstab
       loop: "{{ devices }}"
       
-    - name: Install necessary packages
+    - name: Install OpenJDK-11 and Zabbix agent
       apt:
        #name: ['openjdk-11-jdk', 'postgresql', 'postgresql-contrib', 'postgis', 'tomcat9']
         name: ['openjdk-11-jdk', 'zabbix-agent']
         state: present
         update_cache: yes
 
+    #Zabbix agent configuration for MSF infrastructure
     - name: Configure Zabbix Agent
       blockinfile:
         path: /etc/zabbix/zabbix_agentd.conf
@@ -540,11 +539,10 @@
         state: absent
 
   handlers:
-    - name: Restart ssh
+    - name: Restart ssh and zabbix
       service:
         name: ssh
         state: restarted
-    - name: restart zabbix-agent
       service:
         name: zabbix-agent
         state: restarted
