@@ -64,11 +64,9 @@
       command: cat /tmp/hostname.txt
       register: hostname_content
 
-    - name: Set hostname to match content of /tmp/hostname.txt
       hostname:
         name: "{{ hostname_content.stdout }}"
       
-    - name: Remove /tmp/hostname.txt
       file:
         path: /tmp/hostname.txt
         state: absent
