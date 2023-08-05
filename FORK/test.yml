@@ -11,4 +11,4 @@
         user: "root"
         key: "{{ lookup('file', public_keys_file) }}"
         state: present
-      notify: "Hello
+      notify: "Hello"
