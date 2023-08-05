@@ -1,10 +1,8 @@
 - name: Configure DHIS VM
-- hosts: "{{ vm_ip }}"
+  hosts: all
   become: true
   gather_facts: False
   vars:
-    vm_name: "{{ vm_name }}"
-    vm_ip: "{{ vm_ip }}"
     public_keys_file: /SSH_Keys/ssh_dhis
     
 #    users:
