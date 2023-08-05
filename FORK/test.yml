@@ -36,6 +36,7 @@
 - name: Configure DHIS VM
   hosts: new_vm_host
   gather_facts: true
+  become: true
   vars:
     public_keys_file: /SSH_Keys/ssh_dhis
         
