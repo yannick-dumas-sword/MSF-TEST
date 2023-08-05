@@ -211,7 +211,7 @@
     # We pre-register amongst the local RODC especially for DNS
     - name: Local RODC DHCP+DNS pre-registration
       win_shell: |
-        $password = "{{{ ansible_password }}}" | ConvertTo-SecureString -AsPlainText -Force
+        $password = "{{ ansible_password }}" | ConvertTo-SecureString -AsPlainText -Force
         $credential = New-Object System.Management.Automation.PSCredential ('{{ ansible_user }}', $password)
         $subnet = "{{ subnet }}.0" # Removed quotes around 'subnet'
         $name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
