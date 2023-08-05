@@ -1,15 +1,9 @@
-- hosts: GCH555PHYP001P
+- hosts: localhost
   tasks:
-    - name: Retrieve the IP address using DNS
-      set_fact:
-        ip_address: "{{ lookup('dig', inventory_hostname) }}"
+    - debug: msg="Avant d'appeler un autre playbook"
 
-    - name: Extract the first three octets
-      set_fact:
-        subnet: "{{ ip_address.split('.')[0] + '.' + ip_address.split('.')[1] + '.' + ip_address.split('.')[2] }}"
+- import_playbook: test2.yml
 
-    - name: Print the result
-      debug:
-        msg: "The subnet is {{ subnet }}"
-
-  - import-playbook: test2.yml
+- hosts: localhost
+  tasks:
+    - debug: msg="Après avoir appelé un autre playbook"
