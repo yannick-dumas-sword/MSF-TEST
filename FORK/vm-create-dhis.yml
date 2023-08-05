@@ -520,13 +520,7 @@
         name: zabbix-agent
         state: started
         enabled: yes
-
-    handlers:
-      - name: restart zabbix-agent
-        systemd:
-          name: zabbix-agent
-          state: restarted
-
+        
     - name: Set root authorized_keys
       authorized_key:
         user: "root"
@@ -549,4 +543,8 @@
     - name: Restart ssh
       service:
         name: ssh
+        state: restarted
+    - name: restart zabbix-agent
+      service:
+        name: zabbix-agent
         state: restarted
