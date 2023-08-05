@@ -19,7 +19,9 @@
       vars:
         ansible_remote_tmp: /tmp/.ansible/tmp
         
-        
+    - name: test    
+      debug:
+        msg: {{ lookup('env', 'vm_password') }} / {{ lookup('env', 'vm_username') }}
         
         
         
