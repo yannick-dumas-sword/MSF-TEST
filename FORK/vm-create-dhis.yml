@@ -512,13 +512,7 @@
           ServerActive=10.250.2.4
           Hostname={{ hostname_content.stdout }}
         marker: "# {mark} ANSIBLE MANAGED BLOCK"
-      notify: restart zabbix-agent
-
-    - name: Ensure zabbix-agent is running
-      systemd:
-        name: zabbix-agent
-        state: started
-        enabled: yes
+      notify: Restart zabbix-agent
         
     - name: Set root authorized_keys
       authorized_key:
@@ -532,17 +526,20 @@
         regexp: '^#?PasswordAuthentication'
         line: 'PasswordAuthentication no'
         state: present
-
+      notify: Restart ssh
+      
     - name: Wipe known hosts
       file:
         path: /root/.ssh/known_hosts
         state: absent
 
-  handlers:
-    - name: Restart ssh and zabbix
-      service:
-        name: ssh
-        state: restarted
-      service:
-        name: zabbix-agent
-        state: restarted
+handlers:
+  - name: Restart ssh
+    systemd:
+      name: ssh
+      state: restarted
+
+  - name: Restart zabbix-agent
+    systemd:
+      name: zabbix-agent
+      state: restarted
