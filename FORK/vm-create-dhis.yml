@@ -388,7 +388,7 @@
       vars:
         ansible_remote_tmp: /tmp/.ansible/tmp
         
-    - name: Create temporary file with hostname content
+    - name: Create temporary file for hostname content
       win_tempfile:
         state: directory
       register: temp_dir
@@ -450,7 +450,7 @@
     - name: Create users
       user:
         name: "{{ item.name }}"
-        home: "/home{{ item.name }}"
+        home: "/home/{{ item.name }}"
         shell: /bin/false
         create_home: yes
       loop: "{{ vm_users }}"
