@@ -100,8 +100,7 @@
       
     - name: INFO (VM and IP)
       debug:
-        msg: "IP will be {{ free_ip.stdout | trim }}" 
-        msg: "Next VM name will be {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}" 
+        msg: "Next VM name will be {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP will be IP will be {{ free_ip.stdout | trim }}" 
     
     - name: Make sure .vhdx files don't exist already
       win_shell: |
@@ -117,7 +116,7 @@
       failed_when: vhdx_check_result.stderr != ""
 
     
-    - name: Check if the IP reservation or lease already exists
+    - name: Make sure there's no reservation or lease for {{ free_ip.stdout | trim }}
       win_shell: |
         $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
         $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
@@ -140,7 +139,7 @@
           }
         }
 
-        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
+        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
       register: ip_check_result
       failed_when: ip_check_result.stderr != ""
 
