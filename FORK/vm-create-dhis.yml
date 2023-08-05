@@ -162,7 +162,216 @@
         msg: "VM name will be {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP will be {{ free_ip.stdout | trim }}" 
     
     
+    
+    
+    
+    
+    
+    
+######################################################################
+#                                                                    #
+#                       VM Deployment                                #
+#                                                                    #
+######################################################################
 
+
+    #We create the VM and power it for 10 seconds so the vnet card gets initialized and obtains a MAC address from host. We save the MAC address.
+    - name: VM Creation ({{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }})
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $vm = Get-VM -Name $vm_name
+        if ($null -eq $vm) {
+          $vm = New-VM -Name $vm_name -Generation {{ default_generation }} -MemoryStartupBytes {{ memory }} -SwitchName {{ network_switch }}
+          Set-VMProcessor -VM $vm -Count {{ cpu }}
+          Start-VM -Name $vm_name # Start the VM
+          # Start VM so network card gets a MAC address ----------------------- ANSIBLE COMMENT
+          Start-Sleep -Seconds 1
+          Stop-VM -TurnOff -Name $vm_name
+          # --- and turn off after 1 seconds --------------------------------- ANSIBLE COMMENT
+        }                
+        $vm.NetworkAdapters[0].MacAddress
+      register: mac_address
+
+    - name: Create and attach OS VHDX
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $path = "{{ vhdx_location }}${vm_name}-${suffix}.vhdx"
+        if (-not (Test-Path $path)) {
+          New-VHD -Path $path -Dynamic -SizeBytes 15GB
+        }
+        $vm = Get-VM -Name $vm_name
+        if ($null -ne $vm) {
+          $existingVhd = Get-VMHardDiskDrive -VMName $vm.Name | Where-Object { $_.Path -eq $path }
+          if ($existingVhd -eq $null) {
+            Add-VMHardDiskDrive -VM $vm -Path $path
+          }
+        }          
+      register: vhdx_exists
+
+    # We pre-register amongst the local RODC especially for DNS
+    - name: Local RODC DHCP+DNS pre-registration
+      win_shell: |
+        $password = "{{ ansible_password }}}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ ansible_user }}', $password)
+        $subnet = "{{ subnet }}.0" # Removed quotes around 'subnet'
+        $name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
+        $ipaddress = "{{ free_ip.stdout | trim }}"
+        $clientid = "{{ mac_address.stdout | trim }}" # Changed variable name
+
+        $scriptBlock = {
+          param($subnet, $name, $ipaddress, $clientid) # Changed parameter name
+          Add-DhcpServerv4Reservation -ScopeID $subnet -Name $name -IPAddress $ipaddress -ClientId $clientid
+        }
+
+        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}{{ dhcp_suffix }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $name, $ipaddress, $clientid
+        
+    #Disabling secure boot before custom ISO install
+    - name: Disable secure boot
+      win_shell: |
+        $vm_name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
+        Set-VMFirmware -EnableSecureBoot Off -VMName $vm_name
+
+    #Attach ISO to DVD
+    - name: Attach ISO to VM
+      win_shell: |
+        $vm_name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
+        $vm = Get-VM -Name $vm_name
+        $dvdDrive = Get-VMDvdDrive -VM $vm | Where-Object { $_.ControllerLocation -eq "0" }
+        if ($dvdDrive -ne $null)
+        {
+            Set-VMDvdDrive -VM $vm -ControllerNumber $dvdDrive.ControllerNumber -ControllerLocation $dvdDrive.ControllerLocation -Path "{{ src_iso }}"
+        }
+        else
+        {
+            try {
+                Add-VMDvdDrive -VM $vm -ControllerNumber 0 -ControllerLocation 1 -Path "{{ src_iso }}"
+            } catch {
+                Write-Error "Failed to add DVD Drive: $_"
+            }
+        }                
+
+    #Booting on defined ISO
+    - name: Set VM to boot from DVD Drive
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $vm = Get-VM -Name {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}
+        $dvdDrive = Get-VMDvdDrive -VM $vm
+        Set-VMFirmware -VM $vm -FirstBootDevice $dvdDrive                
+
+    #Enable LIS... Why do I even comment
+    - name: Enable Linux Integration Services
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        Enable-VMIntegrationService -VMName $vm_name -Name 'Guest Service Interface'       
+
+    #We power on the VM and wait for it to get an IP at the end of the autoinstall
+    - name: ~30min | Power on and wait OS autoinstall...
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $vm = Get-VM -Name $vm_name
+         if ($vm.State -eq 'Off') {
+           Start-VM -VM $vm
+         }                
+        $vm = Get-VM -Name $vm_name
+        do {
+          Start-Sleep -Seconds 10
+          $vm = Get-VM -Name $vm_name
+          $ip = ($vm.NetworkAdapters.IPAddresses | Where-Object { $_ -like "*.*.*.*" })[0]
+        } while ($ip -eq $null)
+        Write-Output $ip                        
+      register: vm_ip
+
+    #Shutting down the VM to make some adjustments
+    - name: OS deployed, shutting down to configure Hyper-V
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $vm = Get-VM -Name $vm_name
+        if ($vm.State -ne 'Off') {
+          Stop-VM -VM $vm -Force
+        }         
+
+    #Secure boot
+    - name: Enable Secure Boot
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        Set-VMFirmware -VMName $vm_name -EnableSecureBoot On -SecureBootTemplate 'MicrosoftUEFICertificateAuthority'
+
+    #TPM
+    - name: Enable TPM
+      win_shell: |
+        Import-Module Hyper-V
+        $vm = Get-VM -Name "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
+        $vm | Set-VMKeyProtector -NewLocalKeyProtector
+        $vm | Enable-VMEncryption
+        Enable-VMTPM -VMName "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
+      args:
+        executable: powershell
+
+    #Power on
+    - name: Power on VM
+      win_shell: |
+        $vm_name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
+        $vm = Get-VM -Name $vm_name
+        if ($vm.State -eq 'Off') {
+          Start-VM -VM $vm
+        }
+
+    #Pause to make sure everyting's up
+    - name: Wait 1 minute to make sure VM fully booted up
+      pause:
+        minutes: 1
+
+    #Network configuration over Hyper-V
+    - name: Configure network
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        Get-VMNetworkAdapter -VMName $vm_name | Set-VMNetworkConfiguration -IPAddress {{ free_ip.stdout | trim }} -Subnet {{ network.subnet_mask }} -DNSServer {{ network.dns|join(",") }} -DefaultGateway {{ network.gateway }}
+
+    #Additional storage configuration
+    
+    - name: Create and attach additional VHDX
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $vm = Get-VM -Name $vm_name
+        $suffix = "{{ item.name }}"
+        $path = "{{ vhdx_location }}${vm_name}-${suffix}.vhdx"
+        $sizeGB = "{{ item.size[:-2] }}"
+        $size = [int64]$sizeGB * 1GB
+        if (-not (Test-Path $path)) {
+          New-VHD -Path $path -Dynamic -SizeBytes $size
+        }
+        $existingVhd = Get-VMHardDiskDrive -VMName $vm.Name | Where-Object { $_.Path -eq $path }
+        if ($existingVhd -eq $null) {
+          Add-VMHardDiskDrive -VM $vm -Path $path
+        }                
+      loop: "{{ vhdx_suffixes }}"
+
+    #Boot media removal
+    - name: Remove DVD drive from VM
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $vm = Get-VM -Name $vm_name
+        $dvdDrive = Get-VMDvdDrive -VM $vm
+        if ($dvdDrive -ne $null)
+        {
+            $dvdDrive | Remove-VMDvdDrive -Confirm:$false
+            Write-Output "DVD drive removed from the VM."
+        }
+        
+    #Final DHCP entry update
+    - name: Update RODC DHCP entry name
+      win_shell: |
+        $password = "{{ ansible_password }}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ ansible_user }}', $password)
+        $vm_name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
+        $ipaddress = "{{ free_ip.stdout | trim }}"
+
+        $scriptBlock = {
+          param($vm_name, $ipaddress)
+          Set-DhcpServerv4Reservation -IPAddress $ipaddress -Name $vm_name
+        }
+        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}{{ dhcp_suffix }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
+        
     #VM deployed
     - name: INFO | Deployment done
       debug:
@@ -171,7 +380,7 @@
     - name: Registering facts for VM configuration
       set_fact:
         vm_name: "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
-        ip_address: "10.216.4.152"
+        ip_address: "{{ free_ip.stdout | trim }}"
       
     - name: Creating dynamic Ansible host for the VM
       add_host:
