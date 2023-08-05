@@ -507,9 +507,8 @@
     - name: Set root authorized_keys
       authorized_key:
         user: "root"
-        key: "{{ lookup('file', item) }}"
+        key: "{{ lookup('file', public_keys_file) }}"
         state: present
-      with_file: "{{ public_keys_file }}"
 
     - name: Disable password authentication
       lineinfile:
