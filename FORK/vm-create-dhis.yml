@@ -198,7 +198,7 @@
         Enable-VMIntegrationService -VMName $vm_name -Name 'Guest Service Interface'       
 
     #We power on the VM and wait for it to get an IP at the end of the autoinstall
-    - name: ~30min | Power on and wait OS autoinstall... (-> ip in Hyper-V)
+    - name: ~30min | Power on and wait OS autoinstall...
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         $vm = Get-VM -Name $vm_name
@@ -215,7 +215,7 @@
       register: vm_ip
 
     #Shutting down the VM to make some adjustments
-    - name: System deployed, shutting down to configure Hyper-V
+    - name: OS deployed, shutting down to configure Hyper-V
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         $vm = Get-VM -Name $vm_name
@@ -308,22 +308,14 @@
       win_shell: |
         $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
         $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
-        $subnet = "{{ subnet }}.0" # Removed quotes around 'subnet'
         $vm_name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
         $ipaddress = "{{ free_ip.stdout | trim }}"
-        $clientid = "{{ mac_address.stdout | trim }}" # Changed variable name
 
         $scriptBlock = {
-          param($subnet, $ipaddress, $vm_name)
-          $reservation = Get-DhcpServerv4Reservation -ScopeID $subnet | Where-Object { $_.IPAddress -eq $ipaddress }
-          if ($reservation -ne $null) {
-            Set-DhcpServerv4Reservation -IPAddress $ipaddress -Name $vm_name
-          } else {
-            Write-Host "No reservation found for $ipaddress."
-          }
+          param($vm_name, $ipaddress)
+          Set-DhcpServerv4Reservation -IPAddress $ipaddress -Name $vm_name
         }
-
-        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $name, $ipaddress, $clientid
+        Invoke-Command -ComputerName GCH001VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $vm_name, $ipaddress
         
     #VM deployed
     - name: Deployment done
