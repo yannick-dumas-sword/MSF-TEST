@@ -295,14 +295,14 @@
         }
         
     #Shutting down the VM to make some adjustments
-    - name: Shut down
-      win_shell: |
-        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
-        $vm = Get-VM -Name $vm_name
-        if ($vm.State -ne 'Off') {
-          Stop-VM -VM $vm -Force
-        }  
-        
+#    - name: Shut down
+#      win_shell: |
+#        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+#        $vm = Get-VM -Name $vm_name
+#        if ($vm.State -ne 'Off') {
+#          Stop-VM -VM $vm -Force
+#        }  
+#        
     #Final DHCP entry update
     - name: Update RODC DHCP entry name
       win_shell: |
@@ -314,7 +314,7 @@
         $clientid = "{{ mac_address.stdout | trim }}" # Changed variable name
 
         $scriptBlock = {
-          param($subnet, $ipaddress)
+          param($subnet, $ipaddress, $vm_name)
           $reservation = Get-DhcpServerv4Reservation -ScopeID $subnet | Where-Object { $_.IPAddress -eq $ipaddress }
           if ($reservation -ne $null) {
             Set-DhcpServerv4Reservation -IPAddress $ipaddress -Name $vm_name
