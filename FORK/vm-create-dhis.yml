@@ -100,7 +100,7 @@
       
     - name: INFO (VM and IP)
       debug:
-        msg: "VM name will be {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP will be IP will be {{ free_ip.stdout | trim }}" 
+        msg: "VM name will be {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP will be {{ free_ip.stdout | trim }}" 
     
     - name: Make sure .vhdx files don't exist already
       win_shell: |
@@ -109,6 +109,7 @@
         $originalPath = "{{ vhdx_location }}"
         $doubleBackslashPath = $originalPath.Replace("\", "\\")
         $path = "$doublebackslashpath${vm_name}-${suffix}.vhdx"
+        write-host "$path"
         if (Test-Path -Path $path) {
           throw "File $path already exists."
         }
