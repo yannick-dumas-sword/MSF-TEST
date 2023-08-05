@@ -1,7 +1,5 @@
 - name: Deploy DHIS VM on Hyper-V
   hosts: "{{ lookup('env', 'code_projet') }}PHYP001P"
-  gather_facts: no
-
   vars:
     #VM definition
     default_generation: 2
