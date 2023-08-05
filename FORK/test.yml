@@ -33,8 +33,8 @@
     - name: Copy temporary file into Linux VM
       win_shell: |
         $vmName = "{{ vm_name }}"
-        $sourcePath = "{{ temp_dir.path }}\\hostname.txt"
-        $destinationPath = "/tmp/hostname"
+        $sourcePath = "{{ temp_dir.path }}\\hostname"
+        $destinationPath = "/tmp/"
         Copy-VMFile -Name $vmName -SourcePath $sourcePath -DestinationPath $destinationPath -FileSource Host
 
         
