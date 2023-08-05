@@ -12,4 +12,4 @@
       debug:
         msg: "The subnet is {{ subnet }}"
 
-- import-playbook: test2.yml
+  - import-playbook: test2.yml
