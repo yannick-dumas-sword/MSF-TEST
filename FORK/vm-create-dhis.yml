@@ -318,14 +318,16 @@
         Invoke-Command -ComputerName GCH001VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $vm_name, $ipaddress
         
     #VM deployed
-    - name: Deployment done, registering facts for VM configuration
+    - name: INFO | Deployment done
       debug:
         msg: "Machine name is {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP address is {{ free_ip.stdout | trim }}"
+        
+    - name: Registering facts for VM configuration
       set_fact:
         vm_name: "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
         ip_address: "{{ free_ip.stdout | trim }}"
       
-    - name: Ajout de la VM aux hôtes dynamiques
+    - name: Creating Ansible host for the VM
       add_host:
         name: "{{ vm_name }}"
         groups: new_vm_host
