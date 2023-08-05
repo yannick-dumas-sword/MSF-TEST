@@ -453,7 +453,7 @@
         home: "/home{{ item.name }}"
         shell: /bin/false
         create_home: yes
-      loop: "{{ users }}"
+      loop: "{{ vm_users }}"
  
     - name: Create ext4 filesystem on devices
       command: mkfs.ext4 {{ item.device }}
