@@ -108,8 +108,6 @@
       register: vhdx_check_result
       failed_when: vhdx_check_result.stderr != ""
     
-    - name: Make sure there's no reservation or lease for {{ free_ip.stdout | trim }}
-
     - name: Make sure additional .vhdx files don't exist already
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
