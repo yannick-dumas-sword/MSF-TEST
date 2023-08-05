@@ -502,6 +502,12 @@
         state: present
         update_cache: yes
 
+    - name: Update and upgrade all packages
+      apt:
+        upgrade: dist
+        update_cache: yes
+      become: true
+
     #Zabbix agent configuration for MSF infrastructure
     - name: Configure Zabbix Agent
       blockinfile:
