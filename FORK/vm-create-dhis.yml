@@ -211,7 +211,8 @@
     # We pre-register amongst the local RODC especially for DNS
     - name: Local RODC DHCP+DNS pre-registration
       win_shell: |
-        $password = "{{ ansible_password }}}" | ConvertTo-SecureString -AsPlainText -Force
+      
+        $password = "{{ ansible_password }}" | ConvertTo-SecureString -AsPlainText -Force
         $credential = New-Object System.Management.Automation.PSCredential ('{{ ansible_user }}', $password)
         $subnet = "{{ subnet }}.0"
         $name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
@@ -224,6 +225,7 @@
         }
 
         Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}{{ dhcp_suffix }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $name, $ipaddress, $clientid
+
         
     #Disabling secure boot before custom ISO install
     - name: Disable secure boot
