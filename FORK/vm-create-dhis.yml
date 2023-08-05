@@ -63,10 +63,6 @@
     - name: Check IP range of the host
       set_fact:
         subnet: "{{ lookup('dig', inventory_hostname).split('.')[0] + '.' + lookup('dig', inventory_hostname).split('.')[1] + '.' + lookup('dig', inventory_hostname).split('.')[2] }}"
-
-    - name: INFO (IP range)
-      debug:
-        msg: "It's {{ subnet }}" 
   
     #We look at existings VMs regarding our environment variables by checking the host
     #We register our future VM's name as a variable "next_vm_number" for the current playbook
@@ -87,10 +83,6 @@
         $next_vm_number.ToString("D3")
       register: next_vm_number
       
-    - name: INFO (VM Name)
-      debug:
-        msg: "Next VM name will be {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}" 
-    
     # We check for the next available IP based on playbook defined range ()
     - name: Determine first available IP (based on host)
       win_shell: |
@@ -106,14 +98,12 @@
         throw "No free IP address found in the specified range."
       register: free_ip
       
-    - name: INFO (Free IP)
+    - name: INFO (VM and IP)
       debug:
         msg: "IP will be {{ free_ip.stdout | trim }}" 
-        
+        msg: "Next VM name will be {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}" 
     
-    
-    
-    - name: Check if VHDX files already exist
+    - name: Make sure .vhdx files don't exist already
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         $suffix = "{{ item.name }}"
