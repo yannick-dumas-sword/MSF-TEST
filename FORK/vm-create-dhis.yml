@@ -45,7 +45,7 @@
         
     #Hyper-V
     hyperv_suffix: "PHYP001P"
-    dhcp_suffix: "VRODCO001P"
+    dhcp_suffix: "VRODC001P"
     
     #VM Type
     vm_type: "DHIS"
