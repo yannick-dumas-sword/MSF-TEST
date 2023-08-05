@@ -126,14 +126,23 @@
       register: vhdx_check_result
       failed_when: vhdx_check_result.stderr != ""
 
+
+    - name: Récupérer les credentials du keystore
+      community.general.credentialstore:
+        name: nom_du_credential
+      register: my_creds
+
+
+
     
     - name: Check if the IP reservation or lease already exists
       win_shell: |
-        $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
-        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
+        $username = "{{ my_creds.username }}"
+        $password = "{{ my_creds.password }}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ($username, $password)
         $subnet = "{{ subnet }}.0"
         $ipaddress = "{{ free_ip.stdout | trim }}"
-
+     
         $scriptBlock = {
           param($subnet, $ipaddress)
           
