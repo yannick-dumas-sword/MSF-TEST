@@ -533,7 +533,7 @@
         path: /root/.ssh/known_hosts
         state: absent
 
-handlers:
+  handlers:
   - name: Restart ssh
     systemd:
       name: ssh
