@@ -127,17 +127,20 @@
           param($subnet, $ipaddress)
           
           # Check for existing reservation
-          $reservation = Get-DhcpServerv4Reservation -ScopeId $subnet -IPAddress $ipaddress -ErrorAction SilentlyContinue
+          $reservations = Get-DhcpServerv4Reservation -ScopeId $subnet
+          $reservation = $reservations | Where-Object { $_.IPAddress -eq $ipaddress }
+
           if ($reservation) {
             throw "Reservation already exists for IP $ipaddress in subnet $subnet."
           }
 
           # Check for existing lease
-          $lease = Get-DhcpServerv4Lease -ScopeId $subnet -IPAddress $ipaddress -ErrorAction SilentlyContinue
+          $leases = Get-DhcpServerv4Lease -ScopeId $subnet -ErrorAction SilentlyContinue
+          $lease = $leases | Where-Object { $_.IPAddress -eq $ipaddress }
+
           if ($lease) {
             throw "Lease already exists for IP $ipaddress in subnet $subnet."
           }
-        }
 
         Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
       register: ip_check_result
