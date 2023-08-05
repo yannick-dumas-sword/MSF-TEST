@@ -118,8 +118,8 @@
     
     - name: Make sure there's no reservation or lease for {{ free_ip.stdout | trim }}
       win_shell: |
-        $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
-        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
+        $password = "{{ lookup('env', 'host_password') }}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'host_username') }}', $password)
         $subnet = "{{ subnet }}.0"
         $ipaddress = "{{ free_ip.stdout | trim }}"
 
@@ -185,8 +185,8 @@
     # We pre-register amongst the local RODC especially for DNS
     - name: Local RODC DHCP+DNS pre-registration
       win_shell: |
-        $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
-        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
+        $password = "{{ lookup('env', 'host_password') }}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'host_username') }}', $password)
         $subnet = "{{ subnet }}.0" # Removed quotes around 'subnet'
         $name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
         $ipaddress = "{{ free_ip.stdout | trim }}"
@@ -334,20 +334,11 @@
             Write-Output "DVD drive removed from the VM."
         }
         
-    #Shutting down the VM to make some adjustments
-#    - name: Shut down
-#      win_shell: |
-#        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
-#        $vm = Get-VM -Name $vm_name
-#        if ($vm.State -ne 'Off') {
-#          Stop-VM -VM $vm -Force
-#        }  
-#        
     #Final DHCP entry update
     - name: Update RODC DHCP entry name
       win_shell: |
-        $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
-        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
+        $password = "{{ lookup('env', 'host_password') }}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'host_username') }}', $password)
         $vm_name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
         $ipaddress = "{{ free_ip.stdout | trim }}"
 
