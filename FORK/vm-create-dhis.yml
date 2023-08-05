@@ -100,7 +100,6 @@
     - name: Make sure OS .vhdx don't exist already
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
-        $suffix = "{{ item.name }}"
         $path = "{{ vhdx_location }}${vm_name}-OS.vhdx"
         if (Test-Path -Path $path) {
           throw "File $path already exists."
