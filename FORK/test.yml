@@ -11,3 +11,5 @@
     - name: Print the result
       debug:
         msg: "The subnet is {{ subnet }}"
+
+- import-playbook: test2.yml
