@@ -171,7 +171,7 @@
     - name: Registering facts for VM configuration
       set_fact:
         vm_name: "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
-        ip_address: "{{ free_ip.stdout | trim }}"
+        ip_address: "10.216.4.152"
       
     - name: Creating dynamic Ansible host for the VM
       add_host:
