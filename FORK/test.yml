@@ -1,11 +1,10 @@
 - hosts: localhost
+
+  vars:
+  ansible_user: "{{ lookup('env', 'ANSIBLE_USER') }}"
+  ansible_password: "{{ lookup('env', 'ANSIBLE_PASSWORD') }}"
+
   tasks:
     - name: 2
       debug: 
-        msg: "Avant d'appeler un autre playbook"
-
-- hosts: localhost
-  tasks:
-    - name: 2
-      debug:
-        msg: "Après avoir appelé un autre playbook"
+        msg: "{{ ansible_user }}"

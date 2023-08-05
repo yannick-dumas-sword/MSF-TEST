@@ -412,20 +412,6 @@
   gather_facts: true
   vars:
     public_keys_file: /SSH_Keys/ssh_dhis
-    
-#    users:
-#      - name: adrian
-#        ssh_key: /SSH_Keys/Adrian.pub
-#      - name: arnau
-#        ssh_key: /SSH_Keys/Arnau.pub
-#      - name: hawizi
-#        ssh_key: /SSH_Keys/Hawizi.pub
-#      - name: nazar
-#        ssh_key: /SSH_Keys/Nazar.pub
-#      - name: nicolas
-#        ssh_key: /SSH_Keys/Nicolas.pub
-#      - name: yann
-#        ssh_key: /SSH_Keys/Yann.pub
         
     devices:
       - { device: '/dev/sdb', mount: '/var', temp_mount: '/mnt/var' }
@@ -438,7 +424,6 @@
     - name: Set hostname to match inventory hostname
       hostname:
         name: "{{ vm_name }}"
-        
         
     - name: Create users
       user:
