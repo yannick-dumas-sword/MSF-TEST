@@ -47,7 +47,7 @@
         
     #Hyper-V
     hyperv_suffix: "PHYP001P"
-    dhcp_suffix: "VDCRO001P"
+    dhcp_suffix: "VRODCO001P"
     
     #VM Type
     vm_type: "DHIS"
@@ -156,7 +156,7 @@
           }
         }
 
-        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
+        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}{{ dhcp_suffix }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
       register: ip_check_result
       failed_when: ip_check_result.stderr != ""
     
@@ -226,7 +226,7 @@
           Add-DhcpServerv4Reservation -ScopeID $subnet -Name $name -IPAddress $ipaddress -ClientId $clientid
         }
 
-        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $name, $ipaddress, $clientid
+        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}{{ dhcp_suffix }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $name, $ipaddress, $clientid
         
     #Disabling secure boot before custom ISO install
     - name: Disable secure boot
@@ -373,7 +373,7 @@
           param($vm_name, $ipaddress)
           Set-DhcpServerv4Reservation -IPAddress $ipaddress -Name $vm_name
         }
-        Invoke-Command -ComputerName GCH001VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $vm_name, $ipaddress
+        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}{{ dhcp_suffix }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
         
     #VM deployed
     - name: INFO | Deployment done
