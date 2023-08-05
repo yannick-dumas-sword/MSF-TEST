@@ -71,7 +71,7 @@
     #First we check the IP range
     - name: Check IP range of the host
       set_fact:
-        subnet: "{{ lookup('dig', inventory_hostname).split('.')[0] + '.' + lookup('dig', inventory_hostname).split('.')[1] + '.' + lookup('dig', inventory_hostname).split('.')[2] }}"
+        subnet: "{{ ansible_default_ipv4.address.split('.')[0] + '.' + ansible_default_ipv4.address.split('.')[1] + '.' + ansible_default_ipv4.address.split('.')[2] }}"
   
     #We look at existings VMs regarding our environment variables by checking the host
     #We register our future VM's name as a variable "next_vm_number" for the current playbook
