@@ -106,10 +106,7 @@
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         $suffix = "{{ item.name }}"
-        $originalPath = "{{ vhdx_location }}"
-        $doubleBackslashPath = $originalPath.Replace("\", "\\")
-        $path = "$doublebackslashpath${vm_name}-${suffix}.vhdx"
-        write-host "$path"
+        $path = "{{ vhdx_location }}${vm_name}-${suffix}.vhdx"
         if (Test-Path -Path $path) {
           throw "File $path already exists."
         }
