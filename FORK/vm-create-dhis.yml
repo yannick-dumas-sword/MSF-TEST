@@ -59,6 +59,109 @@
   #Let's goooooooo
   tasks:
   
+######################################################################
+#                                                                    #
+#                     Pre-flight checks                              #
+#                                                                    #
+######################################################################
+
+    - name: Check IP range of the host
+      set_fact:
+        subnet: "{{ lookup('dig', inventory_hostname).split('.')[0] + '.' + lookup('dig', inventory_hostname).split('.')[1] + '.' + lookup('dig', inventory_hostname).split('.')[2] }}"
+  
+  
+    #We look at existings VMs regarding our environment variables by checking the host
+    #We register our future VM's name as a variable "next_vm_number" for the current playbook
+    - name: Determine next available VM name (based on Hyper-V host query)
+      win_shell: |
+        $code_projet = "{{ lookup('env', 'code_projet') }}"
+        $type_machine = "{{ vm_type }}"
+        $environnement = "{{ lookup('env', 'environment') }}"
+
+        $regex = "^${code_projet}V${type_machine}(\d+)$environnement$"
+        $vm_names = Get-VM | Select-Object -ExpandProperty Name
+        $vm_numbers = $vm_names | ForEach-Object { if ($_ -match $regex) { [int]$matches[1] } } | Sort-Object
+        $next_vm_number = 1
+        foreach ($number in $vm_numbers) {
+          if ($number -gt $next_vm_number) { break }
+          $next_vm_number += 1
+        }
+        $next_vm_number.ToString("D3")
+      register: next_vm_number
+      
+    # We check for the next available IP based on playbook defined range ()
+    - name: Determine first available IP (based on ping)
+      win_shell: |
+        $ipStart = {{ network.ip_start }}
+        $ipEnd = {{ network.ip_end }}
+        $subnet = "{{ subnet }}" # Using the previously set subnet variable
+        for ($i=$ipStart; $i -le $ipEnd; $i++) {
+            $ip = $subnet + "." + $i
+            if (!(Test-Connection -ComputerName $ip -Count 1 -Quiet)) {
+                return $ip
+            }
+        }
+        throw "No free IP address found in the specified range."
+      register: free_ip
+    
+    - name: Make sure OS .vhdx don't exist already
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $path = "{{ vhdx_location }}${vm_name}-OS.vhdx"
+        if (Test-Path -Path $path) {
+          throw "File $path already exists."
+        }
+      register: vhdx_check_result
+      failed_when: vhdx_check_result.stderr != ""
+    
+    - name: Make sure additional .vhdx files don't exist already
+      win_shell: |
+        $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
+        $suffix = "{{ item.name }}"
+        $path = "{{ vhdx_location }}${vm_name}-${suffix}.vhdx"
+        if (Test-Path -Path $path) {
+          throw "File $path already exists."
+        }
+      with_items: "{{ vhdx_suffixes }}"
+      register: vhdx_check_result
+      failed_when: vhdx_check_result.stderr != ""
+    
+    - name: Make sure there's no reservation or lease for {{ free_ip.stdout | trim }}
+      win_shell: |
+        $password = "{{ ansible_password }}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ ansible_user }}', $password)
+        $subnet = "{{ subnet }}.0"
+        $ipaddress = "{{ free_ip.stdout | trim }}"
+
+        $scriptBlock = {
+          param($subnet, $ipaddress)
+          
+          # Check for existing reservation
+          $reservations = Get-DhcpServerv4Reservation -ScopeId $subnet
+          $reservation = $reservations | Where-Object { $_.IPAddress -eq $ipaddress }
+
+          if ($reservation) {
+            throw "Reservation already exists for IP $ipaddress in subnet $subnet."
+          }
+
+          # Check for existing lease
+          $leases = Get-DhcpServerv4Lease -ScopeId $subnet -ErrorAction SilentlyContinue
+          $lease = $leases | Where-Object { $_.IPAddress -eq $ipaddress }
+
+          if ($lease) {
+            throw "Lease already exists for IP $ipaddress in subnet $subnet."
+          }
+        }
+
+        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}{{ dhcp_suffix }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
+      register: ip_check_result
+      failed_when: ip_check_result.stderr != ""
+    
+    - name: INFO (VM and IP)
+      debug:
+        msg: "VM name will be {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP will be {{ free_ip.stdout | trim }}" 
+    
+    
 
     #VM deployed
     - name: INFO | Deployment done
