@@ -1,5 +1,5 @@
 - name: Configure DHIS VM
-  hosts: 10.214.4.152
+  hosts: "GCH001VDHIS001Y"
   become: true
   gather_facts: true
   vars:
