@@ -516,7 +516,6 @@
         regexp: '^#?PasswordAuthentication'
         line: 'PasswordAuthentication no'
         state: present
-      notify: Restart ssh
 
     - name: Wipe known hosts
       file:
