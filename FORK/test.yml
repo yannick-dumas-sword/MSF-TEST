@@ -1,5 +1,5 @@
 - name: Deploy DHIS VM on Hyper-V
-  hosts: localhost
+  hosts: GCH001PHYP001P
   #Let's goooooooo
   tasks:
   
