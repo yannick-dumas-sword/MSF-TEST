@@ -51,12 +51,7 @@
     dhcp_suffix: "VDCRO001P"
     
     #VM Type
-    vm_type: "DHIS"
-    
-    #...
-    username: a-ydumas
-    password: Vg43bX87?uiCK1IhUL!
-    
+    vm_type: "DHIS"    
        
   #Let's goooooooo
   tasks:
@@ -319,12 +314,12 @@
         $clientid = "{{ mac_address.stdout | trim }}" # Changed variable name
 
         $scriptBlock = {
-          param($subnet, $ip_address)
-          $reservation = Get-DhcpServerv4Reservation -ScopeID $subnet | Where-Object { $_.IPAddress -eq $ip_address }
+          param($subnet, $ipaddress)
+          $reservation = Get-DhcpServerv4Reservation -ScopeID $subnet | Where-Object { $_.IPAddress -eq $ipaddress }
           if ($reservation -ne $null) {
-            Set-DhcpServerv4Reservation -ScopeID $subnet -ClientId $reservation.ClientId -Name $vm_name
+            Set-DhcpServerv4Reservation -IPAddress $ipaddress -Name $vm_name
           } else {
-            Write-Host "No reservation found for $ip_address."
+            Write-Host "No reservation found for $ipaddress."
           }
         }
 
