@@ -50,12 +50,6 @@
     #VM Type
     vm_type: "DHIS"
     
-    #User accounts on the VM
-    vm_users:
-      - name: "dhis2"
-      - name: "backup"
-    
-
   #Let's goooooooo
   tasks:
   
@@ -432,6 +426,12 @@
       - { device: '/dev/sdd', mount: '/home', temp_mount: '/mnt/home' }
       - { device: '/dev/sde', mount: '/home/dhis2', temp_mount: '/mnt/dhis2' }
       - { device: '/dev/sdf', mount: '/home/backup', temp_mount: '/mnt/backup' }
+      
+    #User accounts on the VM
+    vm_users:
+      - name: "dhis2"
+      - name: "backup"
+    
         
   tasks:
     - name: Read hostname from /tmp/hostname.txt
