@@ -38,7 +38,7 @@
         
     #VHDX location
     vhdx_location:
-      - 'C:\ClusterStorage\Volume1\Hyper-V\DHIS'
+      - 'C:\ClusterStorage\Volume1\Hyper-V\DHIS\'
       
     #Network parameters
     network:
@@ -66,7 +66,7 @@
   
     #We look at existings VMs regarding our environment variables by checking the host
     #We register our future VM's name as a variable "next_vm_number" for the current playbook
-    - name: Determine next available VM name (based on env)
+    - name: Determine next available VM name (based on Hyper-V host query)
       win_shell: |
         $code_projet = "{{ lookup('env', 'code_projet') }}"
         $type_machine = "{{ vm_type }}"
@@ -84,7 +84,7 @@
       register: next_vm_number
       
     # We check for the next available IP based on playbook defined range ()
-    - name: Determine first available IP (based on host)
+    - name: Determine first available IP (based on ping)
       win_shell: |
         $ipStart = {{ network.ip_start }}
         $ipEnd = {{ network.ip_end }}
@@ -106,7 +106,11 @@
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         $suffix = "{{ item.name }}"
-        $path = "C:\\ClusterStorage\\Volume1\\Hyper-V\\DHIS\\${vm_name}-${suffix}.vhdx"
+        
+        $originalPath = "{{ vhdx_location }}"
+        $doubleBackslashPath = $originalPath.Replace("\", "\\")
+        
+        $path = "$doublebackslashpath${vm_name}-${suffix}.vhdx"
 
         if (Test-Path -Path $path) {
           throw "File $path already exists."
@@ -114,7 +118,6 @@
       with_items: "{{ vhdx_suffixes }}"
       register: vhdx_check_result
       failed_when: vhdx_check_result.stderr != ""
-
     
     - name: Make sure there's no reservation or lease for {{ free_ip.stdout | trim }}
       win_shell: |
@@ -146,14 +149,6 @@
         Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
       register: ip_check_result
       failed_when: ip_check_result.stderr != ""
-
-
-    
-    
-    
-    
-    
-    
     
     #We create the VM and power it for 10 seconds so the vnet card gets initialized and obtains a MAC address from host. We save the MAC address.
     - name: VM Creation ({{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }})
