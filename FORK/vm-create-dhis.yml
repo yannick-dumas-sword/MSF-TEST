@@ -195,7 +195,7 @@
     - name: Create and attach OS VHDX
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
-        $path = "{{ vhdx_location }}${vm_name}-${suffix}.vhdx"
+        $path = "{{ vhdx_location }}${vm_name}-OS.vhdx"
         if (-not (Test-Path $path)) {
           New-VHD -Path $path -Dynamic -SizeBytes 15GB
         }
@@ -213,7 +213,7 @@
       win_shell: |
         $password = "{{ ansible_password }}}" | ConvertTo-SecureString -AsPlainText -Force
         $credential = New-Object System.Management.Automation.PSCredential ('{{ ansible_user }}', $password)
-        $subnet = "{{ subnet }}.0" # Removed quotes around 'subnet'
+        $subnet = "{{ subnet }}.0"
         $name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
         $ipaddress = "{{ free_ip.stdout | trim }}"
         $clientid = "{{ mac_address.stdout | trim }}" # Changed variable name
