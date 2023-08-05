@@ -106,12 +106,9 @@
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         $suffix = "{{ item.name }}"
-        
         $originalPath = "{{ vhdx_location }}"
         $doubleBackslashPath = $originalPath.Replace("\", "\\")
-        
         $path = "$doublebackslashpath${vm_name}-${suffix}.vhdx"
-
         if (Test-Path -Path $path) {
           throw "File $path already exists."
         }
@@ -167,12 +164,12 @@
         $vm.NetworkAdapters[0].MacAddress
       register: mac_address
 
-############################DOUBLE QUOTES OBLIGATOIRES ?######################
-######Sinon {{ vhdx_location }} =       - 'C:\ClusterStorage\Volume1\Hyper-V\DHIS'#######
     - name: Create and attach OS VHDX
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
-        $path = "C:\\ClusterStorage\\Volume1\\Hyper-V\\DHIS\\${vm_name}-OS.vhdx"
+        $originalPath = "{{ vhdx_location }}"
+        $doubleBackslashPath = $originalPath.Replace("\", "\\")
+        $path = "$doublebackslashpath${vm_name}-OS.vhdx"
         if (-not (Test-Path $path)) {
           New-VHD -Path $path -Dynamic -SizeBytes 15GB
         }
@@ -306,15 +303,14 @@
 
     #Additional storage configuration
     
-############################DOUBLE QUOTES OBLIGATOIRES ?######################
-######Sinon {{ vhdx_location }} =       - 'C:\ClusterStorage\Volume1\Hyper-V\DHIS'#######
-    
     - name: Create and attach additional VHDX
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         $vm = Get-VM -Name $vm_name
         $suffix = "{{ item.name }}"
-        $path = "C:\\ClusterStorage\\Volume1\\Hyper-V\\DHIS\\${vm_name}-${suffix}.vhdx"
+        $originalPath = "{{ vhdx_location }}"
+        $doubleBackslashPath = $originalPath.Replace("\", "\\")
+        $path = "$doublebackslashpath${vm_name}-${suffix}.vhdx"
         $sizeGB = "{{ item.size[:-2] }}"
         $size = [int64]$sizeGB * 1GB
         if (-not (Test-Path $path)) {
