@@ -1,3 +1,7 @@
+#############################################################
+####################### VM DEPLOYMENT #######################
+#############################################################
+
 - name: Deploy DHIS VM on Hyper-V
   hosts: "{{ lookup('env', 'code_projet') }}PHYP001P"
   gather_facts: no
@@ -332,21 +336,22 @@
         name: "{{ ip_address }}"
         groups: new_vm_host
         ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+        ansible_user: adm-sword
+        ansible_password: Sword123
         ansible_sudo_pass: "Sword123"
       vars:
         ansible_remote_tmp: /tmp/.ansible/tmp
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
+
+
+
+
+
+#############################################################
+##################### VM CONFIGURATION ######################
+#############################################################
+
 - name: Configure DHIS VM
   hosts: new_vm_host
   become: true
