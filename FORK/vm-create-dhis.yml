@@ -50,7 +50,7 @@
         - "{{ subnet }}.1"
         - '8.8.8.8'
         
-    #Hyper-V
+    #Windows environment
     hyperv_suffix: "PHYP001P"
     dhcp_suffix: "VDCRO001P"
     
