@@ -1,11 +1,13 @@
 - hosts: localhost
   tasks:
-    - debug:
-      msg: "Avant d'appeler un autre playbook"
+    - name: 2
+      debug: 
+        msg: "Avant d'appeler un autre playbook"
 
 - import_playbook: test2.yml
 
 - hosts: localhost
   tasks:
-    - debug:
-      msg: "Après avoir appelé un autre playbook"
+    - name: 2
+      debug:
+        msg: "Après avoir appelé un autre playbook"
