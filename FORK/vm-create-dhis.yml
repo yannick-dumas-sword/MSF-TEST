@@ -329,7 +329,8 @@
       add_host:
         name: "{{ vm_name }}"
         groups: new_vm_host
-
+        ansible_user: adm-sword
+        ansible_password: Sword123
 
         
         
