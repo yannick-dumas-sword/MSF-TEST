@@ -141,6 +141,7 @@
           if ($lease) {
             throw "Lease already exists for IP $ipaddress in subnet $subnet."
           }
+        }
 
         Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
       register: ip_check_result
