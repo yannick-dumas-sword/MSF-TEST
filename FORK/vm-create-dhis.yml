@@ -131,8 +131,8 @@
     
     - name: Make sure there's no reservation or lease for {{ free_ip.stdout | trim }}
       win_shell: |
-        $password = "{{ lookup('env', 'host_password') }}" | ConvertTo-SecureString -AsPlainText -Force
-        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'host_username') }}', $password)
+        $password = "{{ ansible_password }}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ ansible_user }}', $password)
         $subnet = "{{ subnet }}.0"
         $ipaddress = "{{ free_ip.stdout | trim }}"
 
@@ -214,8 +214,8 @@
     # We pre-register amongst the local RODC especially for DNS
     - name: Local RODC DHCP+DNS pre-registration
       win_shell: |
-        $password = "{{ lookup('env', 'host_password') }}" | ConvertTo-SecureString -AsPlainText -Force
-        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'host_username') }}', $password)
+        $password = "{{{ ansible_password }}}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ ansible_user }}', $password)
         $subnet = "{{ subnet }}.0" # Removed quotes around 'subnet'
         $name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
         $ipaddress = "{{ free_ip.stdout | trim }}"
@@ -364,8 +364,8 @@
     #Final DHCP entry update
     - name: Update RODC DHCP entry name
       win_shell: |
-        $password = "{{ lookup('env', 'host_password') }}" | ConvertTo-SecureString -AsPlainText -Force
-        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'host_username') }}', $password)
+        $password = "{{ ansible_password }}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ ansible_user }}', $password)
         $vm_name = "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}.ocg.msf.org"
         $ipaddress = "{{ free_ip.stdout | trim }}"
 
