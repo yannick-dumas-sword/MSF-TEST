@@ -127,32 +127,32 @@
       failed_when: vhdx_check_result.stderr != ""
 
     
-- name: Check if the IP reservation or lease already exists
-  win_shell: |
-    $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
-    $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
-    $subnet = "{{ subnet }}.0"
-    $ipaddress = "{{ free_ip.stdout | trim }}"
+    - name: Check if the IP reservation or lease already exists
+      win_shell: |
+        $password = "{{ lookup('env', 'p') }}" | ConvertTo-SecureString -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ('{{ lookup('env', 'u') }}', $password)
+        $subnet = "{{ subnet }}.0"
+        $ipaddress = "{{ free_ip.stdout | trim }}"
 
-    $scriptBlock = {
-      param($subnet, $ipaddress)
-      
-      # Check for existing reservation
-      $reservation = Get-DhcpServerv4Reservation -ScopeId $subnet -IPAddress $ipaddress -ErrorAction SilentlyContinue
-      if ($reservation) {
-        throw "Reservation already exists for IP $ipaddress in subnet $subnet."
-      }
+        $scriptBlock = {
+          param($subnet, $ipaddress)
+          
+          # Check for existing reservation
+          $reservation = Get-DhcpServerv4Reservation -ScopeId $subnet -IPAddress $ipaddress -ErrorAction SilentlyContinue
+          if ($reservation) {
+            throw "Reservation already exists for IP $ipaddress in subnet $subnet."
+          }
 
-      # Check for existing lease
-      $lease = Get-DhcpServerv4Lease -ScopeId $subnet -IPAddress $ipaddress -ErrorAction SilentlyContinue
-      if ($lease) {
-        throw "Lease already exists for IP $ipaddress in subnet $subnet."
-      }
-    }
+          # Check for existing lease
+          $lease = Get-DhcpServerv4Lease -ScopeId $subnet -IPAddress $ipaddress -ErrorAction SilentlyContinue
+          if ($lease) {
+            throw "Lease already exists for IP $ipaddress in subnet $subnet."
+          }
+        }
 
-    Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
-  register: ip_check_result
-  failed_when: ip_check_result.stderr != ""
+        Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}VRODC001P -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $subnet, $ipaddress
+      register: ip_check_result
+      failed_when: ip_check_result.stderr != ""
 
 
     
