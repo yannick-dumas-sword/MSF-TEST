@@ -387,13 +387,28 @@
         name: "{{ ip_address }}"
         groups: new_vm_host
         ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
-        ansible_user: "{{ lookup('env', 'vm_username') }}"
-        ansible_password: "{{ lookup('env', 'vm_password') }}"
+        ansible_ssh_user: "{{ lookup('env', 'vm_username') }}"
+        ansible_ssh_pass: "{{ lookup('env', 'vm_password') }}"
         ansible_sudo_pass: "{{ lookup('env', 'vm_password') }}"
       vars:
         ansible_remote_tmp: /tmp/.ansible/tmp
         
+    - name: Create temporary file with hostname content
+      win_tempfile:
+        state: directory
+      register: temp_dir
+
+    - name: Add hostname to temporary file
+      win_copy:
+        dest: "{{ temp_dir.path }}\\hostname.txt"
+        content: "{{ vm_name }}"
         
+    - name: Copy temporary file into Linux VM
+      win_shell: |
+        $vmName = "{{ vm_name }}"
+        $sourcePath = "{{ temp_dir.path }}\\hostname.txt"
+        $destinationPath = "/tmp/"
+        Copy-VMFile -Name $vmName -SourcePath $sourcePath -DestinationPath $destinationPath -FileSource Host
         
         
         
@@ -418,9 +433,18 @@
       - { device: '/dev/sdf', mount: '/home/backup', temp_mount: '/mnt/backup' }
         
   tasks:
-    - name: Set hostname to match inventory hostname
+    - name: Read hostname from /tmp/hostname.txt
+      command: cat /tmp/hostname.txt
+      register: hostname_content
+
+    - name: Set hostname to match content of /tmp/hostname.txt
       hostname:
-        name: "{{ vm_name }}"
+        name: "{{ hostname_content.stdout }}"
+      
+    - name: Remove /tmp/hostname.txt
+      file:
+        path: /tmp/hostname.txt
+        state: absent
         
     - name: Create users
       user:
