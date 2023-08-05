@@ -1,7 +1,3 @@
-#############################################################
-####################### VM DEPLOYMENT #######################
-#############################################################
-
 - name: Deploy DHIS VM on Hyper-V
   hosts: "{{ lookup('env', 'code_projet') }}PHYP001P"
   gather_facts: no
@@ -54,10 +50,24 @@
     dhcp_suffix: "VDCRO001P"
     
     #VM Type
-    vm_type: "DHIS"    
-       
+    vm_type: "DHIS"
+    
+    #User accounts on the VM
+    vm_users:
+      - name: "dhis2"
+      - name: "backup"
+    
+
   #Let's goooooooo
   tasks:
+  
+######################################################################
+#                                                                    #
+#                     Pre-flight checks                              #
+#                                                                    #
+######################################################################
+
+  
     #First we check the IP range
     - name: Check IP range of the host
       set_fact:
@@ -154,6 +164,20 @@
       debug:
         msg: "VM name will be {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP will be {{ free_ip.stdout | trim }}" 
     
+    
+    
+    
+    
+    
+    
+    
+######################################################################
+#                                                                    #
+#                       VM Deployment                                #
+#                                                                    #
+######################################################################
+
+
     #We create the VM and power it for 10 seconds so the vnet card gets initialized and obtains a MAC address from host. We save the MAC address.
     - name: VM Creation ({{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }})
       win_shell: |
@@ -372,15 +396,15 @@
       vars:
         ansible_remote_tmp: /tmp/.ansible/tmp
         
-
-
-
-
-
-
-#############################################################
-##################### VM CONFIGURATION ######################
-#############################################################
+        
+        
+        
+        
+######################################################################
+#                                                                    #
+#                        VM Configuration                            #
+#                                                                    #
+######################################################################
 
 - name: Configure DHIS VM
   hosts: new_vm_host
@@ -415,19 +439,14 @@
       hostname:
         name: "{{ vm_name }}"
         
-    - name: Create dhis2 user
+        
+    - name: Create users
       user:
-        name: dhis2
-        home: /home/dhis2
+        name: "{{ item.name }}"
+        home: "/home{{ item.name }}"
         shell: /bin/false
         create_home: yes
-
-    - name: Create backup user
-      user:
-        name: backup
-        home: /home/backup
-        shell: /bin/false
-        create_home: yes
+      loop: "{{ users }}"
  
     - name: Create ext4 filesystem on devices
       command: mkfs.ext4 {{ item.device }}
@@ -465,12 +484,10 @@
         src: "{{ item.device }}"
         fstype: ext4
         state: mounted
+        dump: 0
+        passno: 0
       loop: "{{ devices }}"
       
-    - name: Update /etc/fstab
-      shell: echo "UUID=$(blkid -s UUID -o value {{ item.device }}) {{ item.mount }} ext4 defaults 0 0" >> /etc/fstab
-      loop: "{{ devices }}"
-
 #    - name: Install necessary packages
 #      apt:
         #name: ['openjdk-11-jdk', 'postgresql', 'postgresql-contrib', 'postgis', 'tomcat9']
@@ -479,12 +496,11 @@
 #        update_cache: yes
 
     - name: Set root authorized_keys
-      copy:
-        src: "{{ public_keys_file }}"
-        dest: "/root/.ssh/authorized_keys"
-        owner: "root"
-        group: "root"
-        mode: '0600'
+      authorized_key:
+        user: "root"
+        key: "{{ lookup('file', item) }}"
+        state: present
+      with_file: "{{ public_keys_file }}"
 
     - name: Disable password authentication
       lineinfile:
