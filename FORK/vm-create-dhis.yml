@@ -504,7 +504,7 @@
 
     - name: Update and upgrade all packages
       apt:
-        upgrade: dist
+        upgrade: safe
         update_cache: yes
       become: true
 
