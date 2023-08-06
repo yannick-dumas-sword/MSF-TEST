@@ -1,1 +1,0 @@
-MSF Hyper-V ansible project

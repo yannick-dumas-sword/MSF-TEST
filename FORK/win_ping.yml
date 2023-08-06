@@ -1,7 +1,0 @@
----
-- name: Win ping
-  hosts: all
-  gather_facts: no
-
-  tasks:
-    - win_ping:

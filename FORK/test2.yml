@@ -1,5 +1,0 @@
-- hosts: GCH555PHYP001P
-  tasks:
-    - name: debug test
-      debug:
-      msg: Yo

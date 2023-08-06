@@ -34,13 +34,13 @@ cat << EOF > /tmp/iso_new/boot/grub/grub.cfg
 set timeout=10
 menuentry "Autoinstall Ubuntu Server" {
     set gfxpayload=keep
-##    linux   /casper/vmlinuz quiet autoinstall ds=nocloud\;s=/cdrom/nocloud/  ---
-    linux   /casper/vmlinuz quiet autoinstall ds='nocloud-net;s=http://192.168.1.175:3003/'  ---
+    linux   /casper/vmlinuz quiet autoinstall ip=dhcp ds=nocloud\;s=/cdrom/nocloud/  ---
+##    linux   /casper/vmlinuz quiet autoinstall ds='nocloud-net;s=http://192.168.1.175:3003/'  ---
 
     initrd  /casper/initrd
 }
 EOF
 
 echo "Creating the new ISO..."
-sudo grub-mkrescue -o /home/adm-sword/msf/autoinstall-ubuntu-22.04.iso /tmp/iso_new
-echo "Done. The new ISO is located at ~/autoinstall-ubuntu-22.04.iso"
+sudo grub-mkrescue -o ./autoinstall.iso /tmp/iso_new
+echo "Done. The new ISO is located at ./autoinstall.iso"
