@@ -1,6 +1,6 @@
 ---
 - name: Vérifier la connectivité des hôtes Windows avec win_ping
-  hosts: windows_hosts
+  hosts: all
   tasks:
     - name: Win Ping
       win_ping:
