@@ -517,7 +517,6 @@
         upgrade: safe
         update_cache: yes
       become: true
-    upgrade: safe
 
     #Zabbix agent configuration for MSF infrastructure
     - name: Configure Zabbix Agent
