@@ -31,7 +31,7 @@
         size: '10GB'
         
     #VHDX location
-    vhdx_location: 'C:\ClusterStorage\Volume1\Hyper-V\DHIS\'
+    vhdx_location: 'C:\ClusterStorage\Volume1\Hyper-V\LIME\'
       
     #Network parameters
     network:
