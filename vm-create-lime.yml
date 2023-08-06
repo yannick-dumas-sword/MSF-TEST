@@ -63,7 +63,6 @@
       set_fact:
         subnet: "{{ lookup('dig', inventory_hostname).split('.')[0] + '.' + lookup('dig', inventory_hostname).split('.')[1] + '.' + lookup('dig', inventory_hostname).split('.')[2] }}"
   
-  
     #We look at existings VMs regarding our environment variables by checking the host
     #We register our future VM's name as a variable "next_vm_number" for the current playbook
     - name: Determine next available VM name (based on Hyper-V host query)
@@ -83,7 +82,7 @@
         $next_vm_number.ToString("D3")
       register: next_vm_number
       
-    # We check for the next available IP based on playbook defined range ()
+    # We check for the next available IP based on range calculated from host
     - name: Determine first available IP (based on ping)
       win_shell: |
         $ipStart = {{ network.ip_start }}
@@ -164,7 +163,6 @@
 #                       VM Deployment                                #
 #                                                                    #
 ######################################################################
-
 
     #We create the VM and power it for 10 seconds so the vnet card gets initialized and obtains a MAC address from host. We save the MAC address.
     - name: VM Creation ({{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }})
