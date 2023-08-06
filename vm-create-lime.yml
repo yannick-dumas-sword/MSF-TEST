@@ -429,6 +429,9 @@
       - name: "lime"
       - name: "backup"
     
+    #Packages to deploy on the system
+    required_packages: ['mysql-server', 'python3', 'python3-pip', 'openssl', 'zabbix-agent']
+    
   tasks:
     - name: Read hostname from /tmp/hostname.txt
       command: cat /tmp/hostname.txt
@@ -507,10 +510,10 @@
       shell: echo "UUID=$(blkid -s UUID -o value {{ item.device }}) {{ item.mount }} ext4 defaults 0 0" >> /etc/fstab
       loop: "{{ devices }}"
 
-    - name: Install OpenJDK-11 and Zabbix agent
+    - name: Install required packages
       become: true
       apt:
-        name: ['mysql-server', 'python3', 'python3-pip', 'openssl', 'zabbix-agent']
+        name: "{{ required_packages }}"
         state: present
         update_cache: yes
 

@@ -416,6 +416,7 @@
   vars:
     public_keys_file: /SSH_Keys/ssh_dhis
         
+    #Configure devices mount points here
     devices:
       - { device: '/dev/sdb', mount: '/var', temp_mount: '/mnt/var' }
       - { device: '/dev/sdc', mount: '/var/log', temp_mount: '/mnt/varlog' }
@@ -427,6 +428,10 @@
     vm_users:
       - name: "dhis2"
       - name: "backup"
+    
+    #Packages to deploy on the system
+    #required_packages: ['openjdk-11-jdk', 'postgresql', 'postgresql-contrib', 'postgis', 'tomcat9']
+    required_packages: ['openjdk-11-jdk', 'zabbix-agent']
     
   tasks:
     - name: Read hostname from /tmp/hostname.txt
@@ -492,11 +497,10 @@
       shell: echo "UUID=$(blkid -s UUID -o value {{ item.device }}) {{ item.mount }} ext4 defaults 0 0" >> /etc/fstab
       loop: "{{ devices }}"
 
-    - name: Install OpenJDK-11 and Zabbix agent
+    - name: Install required packages
       become: true
       apt:
-        #name: ['openjdk-11-jdk', 'postgresql', 'postgresql-contrib', 'postgis', 'tomcat9']
-        name: ['openjdk-11-jdk', 'zabbix-agent']
+        name: "{{ required_packages }}"
         state: present
         update_cache: yes
 
