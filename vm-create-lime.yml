@@ -1,4 +1,4 @@
-- name: Deploy DHIS VM on Hyper-V
+- name: Deploy LIME VM on Hyper-V
   hosts: "{{ lookup('env', 'code_projet') }}PHYP001P"
   vars:
     #VM definition
