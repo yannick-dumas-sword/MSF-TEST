@@ -364,11 +364,6 @@
         }
         Invoke-Command -ComputerName {{ lookup('env', 'code_projet') }}{{ dhcp_suffix }} -Credential $credential -ScriptBlock $scriptBlock -ArgumentList $vm_name, $ipaddress        
         
-    #VM deployed
-    - name: INFO | Deployment done
-      debug:
-        msg: "Machine name is {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP address is {{ free_ip.stdout | trim }}"
-        
     - name: Registering facts for VM configuration
       set_fact:
         vm_name: "{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}"
@@ -385,12 +380,12 @@
       vars:
         ansible_remote_tmp: /tmp/.ansible/tmp
         
-    - name: Create temporary file for hostname
+    - name: Create temporary file
       win_tempfile:
         state: directory
       register: temp_dir
 
-    - name: Add hostname to temporary file
+    - name: Put hostname into temporary file
       win_copy:
         dest: "{{ temp_dir.path }}\\hostname.txt"
         content: "{{ vm_name }}"
@@ -401,6 +396,11 @@
         $sourcePath = "{{ temp_dir.path }}\\hostname.txt"
         $destinationPath = "/tmp/"
         Copy-VMFile -Name $vmName -SourcePath $sourcePath -DestinationPath $destinationPath -FileSource Host
+        
+    #VM deployed
+    - name: INFO | Deployment done
+      debug:
+        msg: "Machine name is {{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }} and IP address is {{ free_ip.stdout | trim }}"
         
         
         
