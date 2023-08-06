@@ -502,7 +502,7 @@
         name: ['openjdk-11-jdk', 'zabbix-agent']
         state: present
         update_cache: yes
-      upgrade: safe
+        upgrade: safe
 
     #Zabbix agent configuration for MSF infrastructure
     - name: Configure Zabbix Agent
