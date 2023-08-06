@@ -257,7 +257,7 @@
         Enable-VMIntegrationService -VMName $vm_name -Name 'Guest Service Interface'       
 
     #We power on the VM and wait for it to get an IP at the end of the autoinstall
-    - name: ~30min | Power on and wait OS autoinstall...
+    - name: ~30min | Power on and wait OS autoinstall
       win_shell: |
         $vm_name = '{{ lookup('env', 'code_projet') }}V{{ vm_type }}{{ next_vm_number.stdout | trim }}{{ lookup('env', 'environment') }}'
         $vm = Get-VM -Name $vm_name
@@ -494,19 +494,15 @@
     - name: Update /etc/fstab
       shell: echo "UUID=$(blkid -s UUID -o value {{ item.device }}) {{ item.mount }} ext4 defaults 0 0" >> /etc/fstab
       loop: "{{ devices }}"
-      
-    - name: Install OpenJDK-11 and Zabbix agent
+
+    - name: ~10min | Update, upgrade all packages and install necessary packages
+      become: true
       apt:
-       #name: ['openjdk-11-jdk', 'postgresql', 'postgresql-contrib', 'postgis', 'tomcat9']
+        #name: ['openjdk-11-jdk', 'postgresql', 'postgresql-contrib', 'postgis', 'tomcat9']
         name: ['openjdk-11-jdk', 'zabbix-agent']
         state: present
         update_cache: yes
-
-    - name: Update and upgrade all packages
-      apt:
-        upgrade: safe
-        update_cache: yes
-      become: true
+    upgrade: safe
 
     #Zabbix agent configuration for MSF infrastructure
     - name: Configure Zabbix Agent
