@@ -14,19 +14,19 @@
     
     #VHDX naming and sizing
     vhdx_suffixes:
-      #/var
-      - name: 'VAR'
-        size: '20GB'
+      #/var/lib/docker
+      - name: 'DOCKER'
+        size: '10GB'
+      #/var/lib/docker/volumes
+      - name: 'VOLUMES'
+        size: '5GB'
       #/var/log
-      - name: 'VARLOG'
+      - name: 'LOG'
         size: '10GB'
-      #/home    
-      - name: 'HOME'
+      #/home/lime
+      - name: 'LIME'
         size: '10GB'
-      #/home/dhis2
-      - name: 'DHIS2'
-        size: '10GB'
-      #home/bckp
+      #home/backup
       - name: 'BCKP'
         size: '10GB'
         
