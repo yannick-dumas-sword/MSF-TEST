@@ -495,15 +495,6 @@
       shell: echo "UUID=$(blkid -s UUID -o value {{ item.device }}) {{ item.mount }} ext4 defaults 0 0" >> /etc/fstab
       loop: "{{ devices }}"
 
-    - name: ~10min | Update, upgrade all packages and install OpenJDK and Zabbix
-      become: true
-      apt:
-        #name: ['openjdk-11-jdk', 'postgresql', 'postgresql-contrib', 'postgis', 'tomcat9']
-        name: ['openjdk-11-jdk', 'zabbix-agent']
-        state: present
-        update_cache: yes
-        upgrade: safe
-
     - name: Install OpenJDK-11 and Zabbix agent
       become: true
       apt:
