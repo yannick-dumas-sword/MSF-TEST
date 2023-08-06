@@ -504,6 +504,21 @@
         update_cache: yes
         upgrade: safe
 
+    - name: Install OpenJDK-11 and Zabbix agent
+      become: true
+      apt:
+        #name: ['openjdk-11-jdk', 'postgresql', 'postgresql-contrib', 'postgis', 'tomcat9']
+        name: ['openjdk-11-jdk', 'zabbix-agent']
+        state: present
+        update_cache: yes
+
+    - name: Update and upgrade all packages
+      apt:
+        upgrade: safe
+        update_cache: yes
+      become: true
+    upgrade: safe
+
     #Zabbix agent configuration for MSF infrastructure
     - name: Configure Zabbix Agent
       blockinfile:
